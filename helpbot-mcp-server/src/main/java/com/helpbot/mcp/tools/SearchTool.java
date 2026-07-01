@@ -26,10 +26,12 @@ public class SearchTool
 	@McpTool(name = "search", description = "Search the knowledge base for relevant information.")
 	public List<String> search(@McpToolParam(description = "User Question?") String question)
 	{
-		FilterExpressionBuilder filterExpressionBuilder = new FilterExpressionBuilder();
-		return vectorStore.similaritySearch(SearchRequest.builder().query(question).topK(searchConfig.getTopK()).similarityThreshold(
-								searchConfig.getMinSimilarity()).
-						filterExpression(filterExpressionBuilder.eq("internal", false).build()).build())
+		org.springframework.ai.vectorstore.filter.Filter.Expression filterExpression = new FilterExpressionBuilder().eq("internal",
+				false).build();
+		return vectorStore.similaritySearch(
+						SearchRequest.builder().query(question).topK(searchConfig.getTopK()).similarityThreshold(
+										searchConfig.getMinSimilarity()).
+								filterExpression(filterExpression).build())
 				.stream()
 				.map(Document::getFormattedContent)
 				.toList();
@@ -38,9 +40,10 @@ public class SearchTool
 	@McpTool(name = "search_admin", description = "Search the knowledge base for relevant information.")
 	public List<String> searchAdmin(@McpToolParam(description = "User Question?") String question)
 	{
-		FilterExpressionBuilder filterExpressionBuilder = new FilterExpressionBuilder();
+		org.springframework.ai.vectorstore.filter.Filter.Expression filterExpression = new FilterExpressionBuilder().in("internal",
+				true, false).build();
 		return vectorStore.similaritySearch(SearchRequest.builder().topK(searchConfig.getTopK()).similarityThreshold(
-						searchConfig.getMinSimilarity()).query(question).build())
+						searchConfig.getMinSimilarity()).query(question).filterExpression(filterExpression).build())
 				.stream()
 				.map(Document::getFormattedContent)
 				.toList();
