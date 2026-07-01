@@ -4,8 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/helpbot-mcp-server.main.iml" filepath="$PROJECT_DIR$/.idea/modules/helpbot-mcp-server.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/helpbot-mcp-server.test.iml" filepath="$PROJECT_DIR$/.idea/modules/helpbot-mcp-server.test.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/helpbot.main.iml" filepath="$PROJECT_DIR$/.idea/modules/helpbot.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/helpbot.test.iml" filepath="$PROJECT_DIR$/.idea/modules/helpbot.test.iml" />
     </modules>
   </component>
 </project>
