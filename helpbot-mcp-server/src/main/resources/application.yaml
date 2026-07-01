@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: helpbot-mcp-server
+  cloud:
+    aws:
+      s3:
+        path-style-access-enabled: true
+
+helpbot:
+  s3:
+    bucket: helpbot-documents
