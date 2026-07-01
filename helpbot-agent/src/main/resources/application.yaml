@@ -1,3 +1,13 @@
 spring:
   application:
     name: helpbot-agent
+  ai:
+    mcp:
+      client:
+        streamable-http:
+          connections:
+            helpbot-mcp-server:
+              url: http://localhost:8080/mcp
+
+server:
+  port: 8081

@@ -2,11 +2,18 @@ package com.helpbot.mcp;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 
 @SpringBootApplication
-public class HelpbotMcpServerApplication {
+@ConfigurationPropertiesScan
+@EnableScheduling
+public class HelpbotMcpServerApplication
+{
 
-	public static void main(String[] args) {
+	public static void main(String[] args)
+	{
 		SpringApplication.run(HelpbotMcpServerApplication.class, args);
 	}
 

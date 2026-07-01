@@ -1,6 +1,35 @@
 spring:
   application:
     name: helpbot-mcp-server
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mydatabase
+    driver-class-name: org.postgresql.Driver
+    username: myuser
+    password: secret
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        dimensions: 768
+    ollama:
+      embedding:
+        model: embeddinggemma:latest
+    mcp:
+      server:
+        name: helpbot-mcp-server
+        instructions: |
+          You are a helpful assistant that provides information about the company policies
+          and other information. Your task is to answer questions and provide guidance based 
+          on the company's policies, procedures, and other relevant information. 
+          Please ensure your responses are clear, concise, and accurate.
+        protocol: streamable
   cloud:
     aws:
       s3:
@@ -9,3 +38,9 @@ spring:
 helpbot:
   s3:
     bucket: helpbot-documents
+  ingestion:
+    chunk-size: 384
+  search:
+    min-similarity: 0.15
+    top-k: 10
+

@@ -10,11 +10,26 @@ services:
     ports:
       - '4566'
     volumes:
-      - './localstack/init-s3-bucket.sh:/etc/localstack/init/ready.d/init-s3-bucket.sh'
+      - './helpbot-mcp-server/localstack/init-s3-bucket.sh:/etc/localstack/init/ready.d/init-s3-bucket.sh'
+      - './helpbot-mcp-server/localstack/documents:/seed-documents'
   ollama:
     image: 'ollama/ollama:latest'
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     ports:
       - '11434'
+  ollama-model-pull:
+    image: 'ollama/ollama:latest'
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["ollama"]
+    command: ["pull", "embeddinggemma:latest"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
   pgvector:
     image: 'pgvector/pgvector:pg16'
     environment:
@@ -25,3 +40,4 @@ services:
       - "org.springframework.boot.service-connection=postgres"
     ports:
       - '5432'
+

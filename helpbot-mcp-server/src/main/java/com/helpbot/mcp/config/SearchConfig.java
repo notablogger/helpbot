@@ -1,14 +1,14 @@
 package com.helpbot.mcp.config;
 
-
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import lombok.Data;
 
 
-@ConfigurationProperties("helpbot.ingestion")
+@ConfigurationProperties("helpbot.search")
 @Data
-public class IngestionConfig
+public class SearchConfig
 {
-	int chunkSize;
+	int topK;
+	float minSimilarity;
 }
