@@ -19,5 +19,5 @@ public class HelpDeskTicket
 	String raisedBy;
 	String status;
 	String documentId;
-
+	String ticketType;
 }

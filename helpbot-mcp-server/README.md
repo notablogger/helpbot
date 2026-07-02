@@ -23,12 +23,12 @@ Built as a RAG (Retrieval Augmented Generation) backend — you throw documents 
 
 The server exposes these tools over Streamable HTTP at `/mcp`:
 
-| Tool                             | What it does |
-|----------------------------------|---|
+| Tool                             | What it does                                                                                  |
+|----------------------------------|-----------------------------------------------------------------------------------------------|
 | `search`                         | Searches the knowledge base. Only returns **public** documents (filters out `internal=true`). |
-| `search_admin`                   | Same search but returns **everything** — public + internal docs. |
-| `createHelpDeskTicket`           | Creates a help desk ticket in the database. |
-| `getHelpDeskTicketsByDocumentId` | Fetches all help desk tickets linked to a specific document ID. |
+| `search_admin`                   | Same search but returns **everything** — public + internal docs.                              |
+| `createHelpDeskTicket`           | Creates a help desk ticket in the database.                                                   |
+| `getHelpDeskTicketsByUserId` | Fetches all help desk tickets for a user.                                                     |
 
 ### How the code is organized
 

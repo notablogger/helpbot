@@ -35,7 +35,7 @@ The backend. Reads documents from S3, chunks them with Tika, generates embedding
 - `search` — public document search
 - `search_admin` — public + internal document search
 - `createHelpDeskTicket` — create a help desk ticket
-- `getHelpDeskTicketsByDocumentId` — query tickets by document
+- `getHelpDeskTicketsByUserId` — query tickets by user
 
 ### [helpbot-agent](helpbot-agent/README.md)
 

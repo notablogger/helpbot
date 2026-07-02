@@ -28,8 +28,8 @@ spring:
         name: helpbot-mcp-server
         instructions: |
           You are a helpful assistant that provides information about the company policies
-          and other information. Your task is to answer questions and provide guidance based 
-          on the company's policies, procedures, and other relevant information. 
+          and other information. Your task is to answer questions and provide guidance based
+          on the company's policies, procedures, and other relevant information.
           Please ensure your responses are clear, concise, and accurate.
         protocol: streamable
   cloud:
@@ -43,6 +43,6 @@ helpbot:
   ingestion:
     chunk-size: 384
   search:
-    min-similarity: 0.50
-    top-k: 10
+    min-similarity: 0.35
+    top-k: 5
 

@@ -20,8 +20,8 @@ There's one endpoint — `GET /chat?question=...` — protected by basic auth. D
 
 | Role | Tools Available | What it means |
 |---|---|---|
-| `CUSTOMER` | `search`, `createHelpDeskTicket`, `getHelpDeskTicketsByDocumentId` | Public documents only |
-| `EMPLOYEE` | `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByDocumentId` | Public **and** internal documents |
+| `CUSTOMER` | `search`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId` | Public documents only |
+| `EMPLOYEE` | `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId` | Public **and** internal documents |
 
 The routing happens in `HelpBotService` — it checks `SecurityContextHolder` for the current role and picks the right `ChatClient` bean.
 
@@ -31,12 +31,10 @@ The `ToolsUtil` class handles filtering MCP tools at startup. Instead of giving 
 
 ```java
 // Customer chat client — public search only
-ToolsUtil.selectToolsFor(mcpClients, null,
-    List.of("createHelpDeskTicket", "search", "getHelpDeskTicketsByDocumentId"));
+ToolsUtil.selectToolsFor(mcpClients, null,List.of("createHelpDeskTicket", "search", "getHelpDeskTicketsByUserId"));
 
 // Employee chat client — admin search (public + internal)
-ToolsUtil.selectToolsFor(mcpClients, null,
-    List.of("createHelpDeskTicket", "search_admin", "getHelpDeskTicketsByDocumentId"));
+ToolsUtil.selectToolsFor(mcpClients, null,List.of("createHelpDeskTicket", "search_admin", "getHelpDeskTicketsByUserId"));
 ```
 
 `selectToolsFor` walks through all connected MCP clients, filters tools by name, and returns only matching `ToolCallback` instances. This keeps the tool surface tight per role.

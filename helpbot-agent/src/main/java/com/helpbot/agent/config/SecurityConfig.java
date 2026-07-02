@@ -29,13 +29,13 @@ public class SecurityConfig
 	public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder)
 	{
 		var customer = User.builder()
-				.username("customer")
+				.username("john")
 				.password(passwordEncoder.encode("customer"))
 				.roles("CUSTOMER")
 				.build();
 
 		var employee = User.builder()
-				.username("employee")
+				.username("joana")
 				.password(passwordEncoder.encode("employee"))
 				.roles("EMPLOYEE")
 				.build();
