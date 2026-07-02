@@ -73,6 +73,11 @@ curl -u john:customer "http://localhost:8081/chat?question=What%20are%20the%20co
 
 Check each module's README for detailed setup instructions.
 
+## Architecture
+
+For how RAG, ingestion, MCP, the agent loop, the agentic harness, and token cost fit together
+across both modules, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
 ## Switching Providers
 
 Spring AI abstracts away the actual providers — your code talks to `VectorStore`, `EmbeddingModel`, and `ChatModel` interfaces. Swapping OpenAI for Ollama, or pgvector for Pinecone, is mostly a dependency + config change. No code changes.
