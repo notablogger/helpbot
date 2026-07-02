@@ -75,8 +75,9 @@ Check each module's README for detailed setup instructions.
 
 ## Architecture
 
-For how RAG, ingestion, MCP, the agent loop, the agentic harness, and token cost fit together
-across both modules, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+For how RAG, ingestion, MCP, the agent loop, and the agentic harness fit together across both
+modules, see **[ARCHITECTURE.md](ARCHITECTURE.md)**. For what drives token/compute cost and
+where semantic caching would help, see **[TOKENOMICS.md](TOKENOMICS.md)**.
 
 ## Switching Providers
 

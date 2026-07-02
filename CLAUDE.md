@@ -10,7 +10,7 @@ Helpbot is a two-module Spring Boot RAG (Retrieval Augmented Generation) applica
 
 This is the `main` branch — OpenAI, needs `OPENAI_API_KEY`. A fully local variant using Ollama for both chat and embeddings (no API key) lives on the `main_ollama_opensource` branch; do not assume Ollama config applies here even though some test/build files retain Ollama plumbing (see Gotchas).
 
-For a cross-cutting walkthrough (RAG, ingestion, MCP, the agent loop, chat memory, the agentic harness, and token-cost tradeoffs), see [ARCHITECTURE.md](ARCHITECTURE.md).
+For a cross-cutting walkthrough (RAG, ingestion, MCP, the agent loop, chat memory, and the agentic harness), see [ARCHITECTURE.md](ARCHITECTURE.md). For token-cost tradeoffs and where semantic caching would help, see [TOKENOMICS.md](TOKENOMICS.md).
 
 ## Commands
 

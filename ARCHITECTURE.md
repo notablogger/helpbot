@@ -136,27 +136,13 @@ equivalent tool-level check the way `search`/`search_admin` has one.
 
 ## Tokenomics
 
-Nothing in this codebase currently caps token spend — worth knowing before pointing it at
-production traffic:
-
-- **No `max-tokens` / output cap configured.** `application.yaml`'s `spring.ai.openai.chat.*`
-  sets only the model name (`gpt-4o-mini`); there's no ceiling on response length. Compare to
-  `maitch-search-agent`, which caps `max-tokens: 600` explicitly (ADR-A02 there).
-- **Chat memory grows per turn, up to the 20-message window.** Every retained message gets
-  re-sent as context on every subsequent call, so a long conversation's per-call token cost
-  climbs until the window caps it. See [Chat Memory](#chat-memory) for the mechanism and its
-  gaps (no compression, no persistence, no cross-instance sharing).
-- **Each tool call is a full extra round trip.** The [Loop](#loop) above means a question that
-  requires, say, a search followed by a ticket creation costs at least 3 model calls (initial +
-  after search result + after ticket-creation result), each carrying the accumulated
-  conversation and tool results as input tokens.
-- **No rate limiting.** There's no equivalent of `maitch-search-agent`'s `RateLimitFilter` on
-  `/chat` — nothing bounds request volume per caller beyond whatever Basic Auth's two demo
-  users naturally limit you to locally.
-- **Ingestion-side cost** scales with chunk count: 384-token chunks, up to 400 chunks per
-  document (`helpbot.ingestion.chunk-size`), each embedded once per ingestion run — and since
-  ingestion has no dedup (see [Ingestion](#ingestion)), re-running it against unchanged
-  documents re-embeds them for no benefit.
+See [TOKENOMICS.md](TOKENOMICS.md) for the full writeup. Summary: nothing in this codebase
+currently caps token spend — no `max-tokens` ceiling, no rate limiting, chat memory re-sends up
+to 20 messages of context per call, every tool call is a full extra model round trip, and
+ingestion re-embeds unchanged documents on every run. The doc also covers where semantic
+caching (Spring AI 2.0's `SemanticCacheAdvisor`) would help most, and the role-partitioning and
+staleness care it needs given this app's `search`/`search_admin` split and 5-minute ingestion
+cycle.
 
 ## Testing (to be added)
 
