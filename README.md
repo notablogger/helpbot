@@ -78,3 +78,9 @@ Check each module's README for detailed setup instructions.
 Spring AI abstracts away the actual providers — your code talks to `VectorStore`, `EmbeddingModel`, and `ChatModel` interfaces. Swapping OpenAI for Ollama, or pgvector for Pinecone, is mostly a dependency + config change. No code changes.
 
 See **[SWITCHING-PROVIDERS.md](SWITCHING-PROVIDERS.md)** for the full guide.
+
+## Agentic Harness
+
+The system/user prompts, per-role tool exposure, and chat memory that shape the agent's
+behavior — plus a documented gap where one business rule relies on prompt text alone instead
+of code-level enforcement. See **[AGENTIC-HARNESS.md](AGENTIC-HARNESS.md)**.

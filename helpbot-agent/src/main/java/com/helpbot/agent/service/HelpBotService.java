@@ -38,6 +38,9 @@ public class HelpBotService
 		{
 			log.info("Employee role detected, using internal chat client for question: {}", question);
 			return helpBotInternalChatClient.prompt()
+					// binds {userName} in the default system prompt - defaultSystem() only sets the
+					// text, so without this the system message keeps the literal "{userName}" placeholder
+					.system(sys -> sys.param("userName", getUserName()))
 					//prompt stuffing user message
 					.user(getPromptUserSpecConsumer(question))
 					.advisors(
@@ -46,6 +49,7 @@ public class HelpBotService
 		}
 		log.info("Customer role detected, using public chat client for question: {}", question);
 		return helpBotChatClient.prompt()
+				.system(sys -> sys.param("userName", getUserName()))
 				//prompt stuffing user message
 				.user(getPromptUserSpecConsumer(question)).advisors(
 						advisorSpec -> advisorSpec.param(CONVERSATION_ID, getUserName())

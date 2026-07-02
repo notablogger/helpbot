@@ -1,1 +1,2 @@
-Hi my name is {userName}. I am a {role}. I have a question {question}. Can you help me with that?
+[Message from {userName}, role: {role}]
+{question}

@@ -57,7 +57,9 @@ Swagger UI for the agent: `http://localhost:8081/swagger-ui.html`. MCP Inspector
 
 The tool sets are *not* enforced by prompting — `ToolsUtil.selectToolsFor()` filters the MCP server's advertised tools down to an explicit allow-list per client at bean-construction time, so each `ChatClient` physically cannot see tools outside its list. `search` vs `search_admin` is itself enforced server-side (see below), so the split is defense in depth, not the only guard.
 
-Both clients share the same system prompt (`prompts/helpbot-system.st`) and advisor chain: `SimpleLoggerAdvisor`, `HelpBotTokenCountAdvisor` (logs token usage per call), `MessageChatMemoryAdvisor` keyed by username (`CONVERSATION_ID` = the authenticated user). The user-turn template (`prompts/user-system.st`) injects `userName`, `question`, and `role` into every prompt.
+Both clients share the same system prompt (`prompts/helpbot-system.st`) and advisor chain: `SimpleLoggerAdvisor`, `HelpBotTokenCountAdvisor` (logs token usage per call), `MessageChatMemoryAdvisor` keyed by username (`CONVERSATION_ID` = the authenticated user). The user-turn template (`prompts/user-system.st`) injects `userName`, `question`, and `role` into every prompt. `HelpBotService.chat()` also binds `userName` on the *system* spec (`.system(sys -> sys.param("userName", ...))`) — `defaultSystem()` in `HelpBotChatClientConfig` only sets the text, so without a per-request param bind the `{userName}` placeholder in the system prompt is sent to the model unrendered (Spring AI does not throw when a template placeholder has zero bound params; it just leaves it literal — verify with a stub `ChatModel` before assuming otherwise).
+
+See [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md) for the full breakdown of what's harness-enforced (tool allow-lists, server-side `internal` filter) vs. prompt-only (the ticket-type policy in `helpbot-system.st` rule 6, which has no code-level backing — see that doc for why that's a gap, not a design choice).
 
 ### Ingestion pipeline (`helpbot-mcp-server`)
 
