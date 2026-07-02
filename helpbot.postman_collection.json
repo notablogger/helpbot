@@ -1,0 +1,76 @@
+{
+  "info": {
+    "name": "Helpbot",
+    "description": "Helpbot Agent API — role-based chat endpoint with Basic Auth.\n\n- **customer/customer** → public knowledge only\n- **employee/employee** → public + internal knowledge",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "question",
+      "value": "What are the company policies?",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Chat as Customer",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/chat?question={{question}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["chat"],
+          "query": [
+            {
+              "key": "question",
+              "value": "{{question}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "customer", "type": "string" },
+            { "key": "password", "value": "customer", "type": "string" }
+          ]
+        },
+        "description": "Send a question as a **Customer**. Only public documents are searched."
+      },
+      "response": []
+    },
+    {
+      "name": "Chat as Employee",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/chat?question={{question}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["chat"],
+          "query": [
+            {
+              "key": "question",
+              "value": "{{question}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "employee", "type": "string" },
+            { "key": "password", "value": "employee", "type": "string" }
+          ]
+        },
+        "description": "Send a question as an **Employee**. Both public and internal documents are searched."
+      },
+      "response": []
+    }
+  ]
+}
+
