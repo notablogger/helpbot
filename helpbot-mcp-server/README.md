@@ -6,7 +6,7 @@ A Spring Boot app that acts as an MCP (Model Context Protocol) server. It ingest
 
 Built as a RAG (Retrieval Augmented Generation) backend — you throw documents at it, it chunks them up, generates embeddings via Ollama, stores them in pgvector, and makes them searchable.
 
-> Want to swap Ollama for OpenAI, or pgvector for Pinecone? See [SWITCHING-PROVIDERS.md](SWITCHING-PROVIDERS.md).
+> Want to swap Ollama for OpenAI, or pgvector for Pinecone? See [SWITCHING-PROVIDERS.md](../SWITCHING-PROVIDERS.md).
 
 ### Stack
 
