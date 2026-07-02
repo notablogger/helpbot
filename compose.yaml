@@ -27,7 +27,7 @@ services:
       ollama:
         condition: service_healthy
     entrypoint: ["ollama"]
-    command: ["pull", "embeddinggemma:latest"]
+    command: ["pull", "nomic-embed-text"]
     environment:
       OLLAMA_HOST: http://ollama:11434
   ollama-model-pull-chat:

@@ -20,7 +20,8 @@ spring:
         dimensions: 768
     ollama:
       embedding:
-        model: embeddinggemma:latest
+        model: nomic-embed-text
+
     mcp:
       server:
         name: helpbot-mcp-server
@@ -41,6 +42,6 @@ helpbot:
   ingestion:
     chunk-size: 384
   search:
-    min-similarity: 0.15
+    min-similarity: 0.50
     top-k: 10
 
