@@ -38,10 +38,10 @@ Manually trigger ingestion (instead of waiting for the 5-min scheduled job):
 curl -X POST http://localhost:8080/api/ingest/all
 ```
 
-Exercise the chat endpoint (`local` profile seeds `customer/customer` and `employee/employee` — see `SecurityConfig`):
+Exercise the chat endpoint (`local` profile seeds `john/customer` (CUSTOMER) and `joana/employee` (EMPLOYEE) — see `SecurityConfig`; the READMEs used to say `customer/customer` and `employee/employee`, which don't exist):
 ```bash
-curl -u customer:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
-curl -u employee:employee "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
+curl -u john:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
+curl -u joana:employee "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
 ```
 
 Swagger UI for the agent: `http://localhost:8081/swagger-ui.html`. MCP Inspector against the server: `npx @modelcontextprotocol/inspector`, Streamable HTTP, `http://localhost:8080/mcp`.
@@ -83,6 +83,15 @@ S3 objects are deleted immediately after successful ingestion — the bucket is 
 - `spring.ai.*` — model/vector-store wiring (both modules)
 - `helpbot.ingestion.chunk-size`, `helpbot.search.{top-k,min-similarity}`, `helpbot.s3.bucket` — this app's own settings, bound via `@ConfigurationProperties` (`IngestionConfig`, `SearchConfig`)
 
+## CI
+
+`.github/workflows/ci.yml` runs two independent jobs (one per module, each with its own working directory and Gradle wrapper), on push to `main`/`claude/**` and on PRs into `main`:
+
+- `mcp-server` — `./gradlew build`, tests included (Testcontainers spins up LocalStack/pgvector/Ollama against the runner's Docker daemon).
+- `agent` — `./gradlew build -x test compileTestJava`, tests excluded. See the MCP-client-startup gotcha above for why.
+
+Both jobs set a placeholder `OPENAI_API_KEY` env var so the Spring context can resolve the property; no real OpenAI call happens in CI.
+
 ## Gotchas
 
 - `helpbot-mcp-server`'s `TestcontainersConfiguration` still spins up an `OllamaContainer` even on this OpenAI branch (kept for parity with `main_ollama_opensource`) — it's unused by the app under test but still costs container startup time; don't read its presence as a signal that this branch talks to Ollama.
@@ -90,3 +99,4 @@ S3 objects are deleted immediately after successful ingestion — the bucket is 
 - `ddl-auto: update` never drops columns/tables — entity changes that remove/rename fields need a manual schema fix locally.
 - The agent's `compose.yaml` is a symlink to the root one so Spring Boot Docker Compose port-discovery works there too, but the MCP server owns actually starting the containers — start the server before the agent.
 - `SWITCHING-PROVIDERS.md` documents exactly which files are provider-agnostic (`IngestionService`, `SearchService`/`SearchTool`, `HelpBotChatClientConfig`) vs. what needs to change when swapping chat model, embedding model, or vector store — check it before touching provider wiring.
+- `helpbot-agent`'s Spring AI MCP client connects to the MCP server URL **eagerly and synchronously at context startup**, and fails application/test startup hard if it can't reach it (upstream limitation, not configurable here — see [spring-ai#3232](https://github.com/spring-projects/spring-ai/issues/3232)). `HelpbotAgentApplicationTests` (`@SpringBootTest`, no mocking) will only pass with a real `helpbot-mcp-server` reachable at `http://localhost:8080/mcp`; CI does not run it for this reason (see `.github/workflows/ci.yml`).

@@ -67,8 +67,8 @@ cd helpbot-mcp-server
 cd helpbot-agent
 ./gradlew bootRun
 
-# 4. Ask a question
-curl -u customer:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
+# 4. Ask a question (local profile seeds john/customer as CUSTOMER, joana/employee as EMPLOYEE)
+curl -u john:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
 ```
 
 Check each module's README for detailed setup instructions.

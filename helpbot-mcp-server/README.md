@@ -45,7 +45,6 @@ com.helpbot.mcp/
     IngestionController.java          — POST /api/ingest/all endpoint
   
   s3/
-    S3DocumentService.java            — lists + downloads files from S3, calls ingestion
     S3IngestionJob.java               — scheduled job, runs ingestFromS3() every 5 min
 
   ingestion/
@@ -58,6 +57,7 @@ com.helpbot.mcp/
   service/
     HelpDeskTicketService.java        — ticket business logic
     SearchService.java                — vector store search logic (public + admin)
+    S3DocumentService.java            — lists + downloads files from S3, calls ingestion
 
 
   rds/
@@ -84,7 +84,7 @@ S3 bucket (internal/ or public/)
       → TikaDocumentReader               parses PDF/DOCX/PPTX into text
       → TokenTextSplitter                splits into chunks (size 384, max 400 chunks)
       → adds metadata                    { "internal": true/false, "source": "filename" }
-      → VectorStore.add()               generates embeddings via Ollama, stores in pgvector
+      → VectorStore.add()               generates embeddings via OpenAI, stores in pgvector
 ```
 
 The metadata is important — `search` filters on `internal=false` so public users don't see internal docs. `search_admin` returns both.
