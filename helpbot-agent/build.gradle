@@ -23,6 +23,7 @@ ext {
 
 dependencies {
 	implementation 'org.springframework.ai:spring-ai-starter-mcp-client'
+    implementation 'org.springframework.ai:spring-ai-starter-mcp-client'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 	developmentOnly 'org.springframework.ai:spring-ai-spring-boot-docker-compose'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

@@ -1,11 +1,11 @@
-package com.helpbot.mcp.ingestion;
+package com.helpbot.mcp.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.helpbot.mcp.s3.S3DocumentService;
+import com.helpbot.mcp.service.S3DocumentService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ public class IngestionController
 	@PostMapping("/all")
 	public ResponseEntity<String> ingestAll()
 	{
-		s3DocumentService.ingestAll();
+		s3DocumentService.ingestFromS3();
 		return ResponseEntity.ok("Ingestion complete for all documents");
 	}
 }

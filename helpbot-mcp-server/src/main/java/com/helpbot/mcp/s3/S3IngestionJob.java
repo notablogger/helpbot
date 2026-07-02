@@ -3,6 +3,8 @@ package com.helpbot.mcp.s3;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.helpbot.mcp.service.S3DocumentService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,7 +20,7 @@ public class S3IngestionJob
 	public void ingestDocuments()
 	{
 		log.info("Starting S3 document ingestion");
-		s3DocumentService.ingestAll();
+		s3DocumentService.ingestFromS3();
 		log.info("S3 document ingestion complete");
 	}
 }

@@ -1,4 +1,4 @@
-package com.helpbot.mcp.s3;
+package com.helpbot.mcp.service;
 
 import java.util.List;
 
@@ -36,7 +36,7 @@ public class S3DocumentService
 		return s3Template.download(bucket, key);
 	}
 
-	public void ingestAll()
+	public void ingestFromS3()
 	{
 		ingestFolder(INTERNAL_PREFIX, true);
 		ingestFolder(PUBLIC_PREFIX, false);
@@ -59,6 +59,12 @@ public class S3DocumentService
 			log.info("Downloading s3://{}/{} (internal={})", bucket, key, internal);
 			Resource resource = download(key);
 			ingestionService.chunkAndIngest(resource, internal);
+			deleteAfterIngestion(key);
 		}
+	}
+
+	private void deleteAfterIngestion(final String key)
+	{
+		s3Template.deleteObject(bucket, key);
 	}
 }

@@ -37,6 +37,7 @@ public class IngestionService
 				doc.getMetadata().put("internal", internal);
 				doc.getMetadata().put("source", resource.getFilename());
 			});
+			//can be upsert
 			vectorStore.add(split);
 			log.info("Successfully chunked and ingested {}, total chunks: {}", resource.getFilename(), split.size());
 			return true;
