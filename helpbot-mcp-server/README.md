@@ -4,14 +4,16 @@
 
 A Spring Boot app that acts as an MCP (Model Context Protocol) server. It ingests documents, stores them as vector embeddings, and exposes tools that any MCP client can call to search through those documents or manage help desk tickets.
 
-Built as a RAG (Retrieval Augmented Generation) backend — you throw documents at it, it chunks them up, generates embeddings via Ollama, stores them in pgvector, and makes them searchable.
+Built as a RAG (Retrieval Augmented Generation) backend — you throw documents at it, it chunks them up, generates embeddings via OpenAI, stores them in pgvector, and makes them searchable.
 
-> Want to swap Ollama for OpenAI, or pgvector for Pinecone? See [SWITCHING-PROVIDERS.md](../SWITCHING-PROVIDERS.md).
+> Want to swap OpenAI for Ollama, or pgvector for Pinecone? See [SWITCHING-PROVIDERS.md](../SWITCHING-PROVIDERS.md).
+>
+> Want to run everything locally without an API key? Use the [`main_ollama_opensource`](https://github.com/notablogger/helpbot/tree/main_ollama_opensource) branch.
 
 ### Stack
 
 - Java 25, Spring Boot 4.1.0, Spring AI 2.0.0
-- Ollama — runs the embedding model (`embeddinggemma:latest`, 768 dimensions)
+- OpenAI — embedding model (`text-embedding-3-small`, 1536 dimensions)
 - pgvector (PostgreSQL 16) — stores vector embeddings + help desk tickets
 - LocalStack — local S3 for document storage
 - Apache Tika — parses PDFs, DOCX, PPTX, etc.
@@ -111,8 +113,13 @@ S3 uploads are atomic — a file is either fully uploaded or not visible at all.
 ### Prerequisites
 
 - Java 25
-- Docker (for LocalStack, Ollama, pgvector)
+- Docker (for LocalStack, pgvector)
 - Node.js (for MCP Inspector, optional)
+- An OpenAI API key:
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
 
 ### compose.yaml
 
@@ -120,21 +127,9 @@ Everything runs via Docker Compose. Spring Boot auto-starts it when you do `./gr
 
 Services:
 - **LocalStack** — local S3 on port 4566
-- **Ollama** — LLM/embedding server on port 11434
-- **ollama-model-pull** — one-off container that pulls `embeddinggemma:latest` after Ollama is healthy
 - **pgvector** — PostgreSQL 16 with vector extension on port 5432
 
 Ports are mapped dynamically — Spring Boot discovers them automatically.
-
-### Ollama model
-
-The embedding model `embeddinggemma:latest` gets pulled automatically as part of Docker Compose startup. There's a dedicated `ollama-model-pull` service that waits for Ollama to be healthy and then runs `ollama pull`.
-
-If you need to pull it manually:
-
-```bash
-docker compose run --rm ollama-model-pull
-```
 
 ### Where to put documents
 
@@ -166,28 +161,34 @@ aws --endpoint-url=http://localhost:<PORT> s3 cp myfile.pdf s3://helpbot-documen
 
 ### Steps to run
 
-1. Start the server (this starts Docker Compose automatically):
+1. Set your OpenAI API key:
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
+2. Start the server (this starts Docker Compose automatically):
 
 ```bash
 cd helpbot-mcp-server
 ./gradlew bootRun
 ```
 
-2. Wait for it — first time takes a while because it pulls the Ollama model and ingests documents.
+3. Wait for it — first time takes a while as it ingests documents.
 
-3. The ingestion job runs immediately on startup and then every 5 minutes. You can also trigger it manually:
+4. The ingestion job runs immediately on startup and then every 5 minutes. You can also trigger it manually:
 
 ```bash
 curl -X POST http://localhost:8080/api/ingest/all
 ```
 
-4. Check the S3 bucket contents:
+5. Check the S3 bucket contents:
 
 ```bash
 docker compose exec localstack awslocal s3 ls s3://helpbot-documents/ --recursive
 ```
 
-5. Check the database:
+6. Check the database:
 
 ```bash
 docker compose exec pgvector psql -U myuser -d mydatabase -c "\dt public.*"
@@ -213,6 +214,6 @@ Note: MCP Inspector runs in the browser, so the server needs CORS enabled. That'
 
 - If you restart LocalStack but not the server, you'll get `Connection refused` errors because the port changed. Restart the server too.
 - `ddl-auto: update` means Hibernate creates missing tables on startup but doesn't drop existing ones. If you change an entity, you might need to drop the table manually.
-- The embedding model outputs 768-dimensional vectors. The `dimensions: 768` in `application.yaml` must match. If you switch models, update both.
+- The embedding model outputs 1536-dimensional vectors. The `dimensions: 1536` in `application.yaml` must match. If you switch models, update both. See [SWITCHING-PROVIDERS.md](../SWITCHING-PROVIDERS.md).
 - S3 data lives inside the LocalStack container and is lost on recreate. Your source of truth is the `localstack/documents/` folder.
-
+- Make sure `OPENAI_API_KEY` is set before starting the server, or you'll get authentication errors.

@@ -17,10 +17,11 @@ spring:
     vectorstore:
       pgvector:
         initialize-schema: true
-        dimensions: 768
-    ollama:
+        dimensions: 1536
+    openai:
+      api-key: ${OPENAI_API_KEY}
       embedding:
-        model: nomic-embed-text
+        model: text-embedding-3-small
 
     mcp:
       server:
