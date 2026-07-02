@@ -2,12 +2,23 @@ spring:
   application:
     name: helpbot-agent
   ai:
+    ollama:
+      chat:
+        model: llama3.2:latest
     mcp:
       client:
         streamable-http:
           connections:
             helpbot-mcp-server:
-              url: http://localhost:8080/mcp
-
+              url: http://localhost:8080
+              endpoint: /mcp
+logging:
+  level:
+    org:
+      springframework:  
+        ai:
+          chat:
+            client:
+              advisor: DEBUG
 server:
   port: 8081

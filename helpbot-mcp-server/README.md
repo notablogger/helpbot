@@ -55,6 +55,8 @@ com.helpbot.mcp/
 
   service/
     HelpDeskTicketService.java        — ticket business logic
+    SearchService.java                — vector store search logic (public + admin)
+
 
   rds/
     entity/HelpDeskTicket.java        — JPA entity

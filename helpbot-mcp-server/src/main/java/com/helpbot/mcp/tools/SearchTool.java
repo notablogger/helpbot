@@ -2,50 +2,54 @@ package com.helpbot.mcp.tools;
 
 import java.util.List;
 
-import org.springframework.ai.document.Document;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
 
-import com.helpbot.mcp.config.SearchConfig;
+import com.helpbot.mcp.service.SearchService;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 
+/**
+ * MCP tools for searching the knowledge base.
+ * <p>
+ * Exposes two search variants:
+ * <ul>
+ *   <li>{@code search} — public search, returns only documents marked as non-internal</li>
+ *   <li>{@code search_admin} — admin search, returns all documents including internal ones</li>
+ * </ul>
+ * Both tools perform vector similarity search against pgvector via the {@link SearchService}.
+ */
 @Service
 @RequiredArgsConstructor
 public class SearchTool
 {
-	private final VectorStore vectorStore;
-	private final SearchConfig searchConfig;
+	private final SearchService searchService;
 
-	@McpTool(name = "search", description = "Search the knowledge base for relevant information.")
-	public List<String> search(@McpToolParam(description = "User Question?") String question)
+	/**
+	 * Searches the knowledge base for public documents only.
+	 * Filters out any document with {@code internal=true} metadata.
+	 *
+	 * @param question the user's natural language question
+	 * @return list of matching document chunks formatted as strings
+	 */
+	@McpTool(name = "search", description = "Search the knowledge base for relevant information. Returns only public documents.")
+	public List<String> search(@McpToolParam(description = "The user's question to search for in the knowledge base") String question)
 	{
-		org.springframework.ai.vectorstore.filter.Filter.Expression filterExpression = new FilterExpressionBuilder().eq("internal",
-				false).build();
-		return vectorStore.similaritySearch(
-						SearchRequest.builder().query(question).topK(searchConfig.getTopK()).similarityThreshold(
-										searchConfig.getMinSimilarity()).
-								filterExpression(filterExpression).build())
-				.stream()
-				.map(Document::getFormattedContent)
-				.toList();
+		return searchService.searchPublic(question);
 	}
 
-	@McpTool(name = "search_admin", description = "Search the knowledge base for relevant information.")
-	public List<String> searchAdmin(@McpToolParam(description = "User Question?") String question)
+	/**
+	 * Searches the knowledge base for all documents (public + internal).
+	 * Intended for internal/employee use where confidential docs should be visible.
+	 *
+	 * @param question the user's natural language question
+	 * @return list of matching document chunks formatted as strings
+	 */
+	@McpTool(name = "search_admin", description = "Search the knowledge base for relevant information. Returns all documents including internal/confidential ones.")
+	public List<String> searchAdmin(@McpToolParam(description = "The user's question to search for in the knowledge base") String question)
 	{
-		org.springframework.ai.vectorstore.filter.Filter.Expression filterExpression = new FilterExpressionBuilder().in("internal",
-				true, false).build();
-		return vectorStore.similaritySearch(SearchRequest.builder().topK(searchConfig.getTopK()).similarityThreshold(
-						searchConfig.getMinSimilarity()).query(question).filterExpression(filterExpression).build())
-				.stream()
-				.map(Document::getFormattedContent)
-				.toList();
+		return searchService.searchAll(question);
 	}
 }

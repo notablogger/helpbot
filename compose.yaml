@@ -21,13 +21,22 @@ services:
       retries: 12
     ports:
       - '11434'
-  ollama-model-pull:
+  ollama-model-pull-embedding:
     image: 'ollama/ollama:latest'
     depends_on:
       ollama:
         condition: service_healthy
     entrypoint: ["ollama"]
     command: ["pull", "embeddinggemma:latest"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+  ollama-model-pull-chat:
+    image: 'ollama/ollama:latest'
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: [ "ollama" ]
+    command: [ "pull", "llama3.2:latest" ]
     environment:
       OLLAMA_HOST: http://ollama:11434
   pgvector:
