@@ -17,11 +17,10 @@ spring:
     vectorstore:
       pgvector:
         initialize-schema: true
-        dimensions: 1536
-    openai:
-      api-key: ${OPENAI_API_KEY}
+        dimensions: 768
+    ollama:
       embedding:
-        model: text-embedding-3-small
+        model: nomic-embed-text
 
     mcp:
       server:
@@ -43,6 +42,6 @@ helpbot:
   ingestion:
     chunk-size: 384
   search:
-    min-similarity: 0.35
-    top-k: 5
+    min-similarity: 0.50
+    top-k: 10
 

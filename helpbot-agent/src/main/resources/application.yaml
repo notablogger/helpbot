@@ -2,10 +2,9 @@ spring:
   application:
     name: helpbot-agent
   ai:
-    openai:
-      api-key: ${OPENAI_API_KEY}
+    ollama:
       chat:
-        model: gpt-4o-mini
+        model: llama3.2:latest
     mcp:
       client:
         streamable-http:
