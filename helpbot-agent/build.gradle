@@ -38,7 +38,7 @@ dependencies {
 
 
 	implementation 'org.springframework.ai:spring-ai-starter-mcp-client'
-	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+	implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
 
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -49,7 +49,7 @@ dependencies {
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.testcontainers:testcontainers-ollama' // kept for Ollama branch compatibility
+    testImplementation 'org.testcontainers:testcontainers-ollama'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
