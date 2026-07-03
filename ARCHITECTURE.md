@@ -64,15 +64,26 @@ See [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md). Summary:
 
 See [TOKENOMICS.md](TOKENOMICS.md). Summary:
 
-## Testing (to be added)
+## Testing
 
-- Planned: **Spring AI's evaluation framework**
-  (`org.springframework.ai.chat.client.evaluation` — `RelevancyEvaluator`,
-  `FactCheckingEvaluator`), judge-LLM-scored:
-  1. Fixed golden questions per role (public-only vs. public+internal).
-  2. Drive through `/chat` (or the `ChatClient` beans directly).
-  3. Score `{question, retrieved context, answer}` — relevancy (addresses the question?) and
-     groundedness (supported by retrieved chunks, or hallucinated?).
-  4. Gate the build below a threshold, same as `jacocoTestCoverageVerification` does for
-     coverage today.
-- Not implemented — shape flagged here so it isn't designed from scratch later.
+Judge-LLM quality checks via **Spring AI's evaluation framework**
+(`org.springframework.ai.chat.evaluation` — `RelevancyEvaluator`, `FactCheckingEvaluator`,
+backed by `org.springframework.ai.evaluation.{EvaluationRequest,EvaluationResponse}`):
+`helpbot-agent/src/test/.../evaluation/RagQualityEvaluationTest.java`.
+
+- **Implemented:** a parameterized test scores three hand-picked `{question, context, answer}`
+  fixtures — a grounded/relevant answer, a hallucinated one (detail not in context), and an
+  off-topic one — asserting each evaluator's `isPass()` matches expectation in both directions,
+  so the test would actually fail if the evaluators stopped discriminating. Builds its own
+  minimal Spring context (`ApplicationContextRunner` + `OpenAiChatAutoConfiguration` +
+  `ChatClientAutoConfiguration`) to act as judge, rather than `@SpringBootTest`ing the real
+  application — that would hit the MCP-client eager-connect gotcha for no reason, since this
+  test doesn't need `helpbot-mcp-server` at all. Requires a real `OPENAI_API_KEY`; skipped
+  (`@EnabledIfEnvironmentVariable`), not failed, without one, so it doesn't run against CI's
+  placeholder key.
+- **Not yet implemented:** the fixtures are illustrative, not derived from real seeded
+  documents (this repo ships no committed seed content — see
+  `helpbot-mcp-server`'s README); nothing yet drives the real `/chat` endpoint or the real
+  `search`/`search_admin` retrieval to get golden questions scored end-to-end per role
+  (public-only vs. public+internal); and it isn't wired into a CI gate the way
+  `jacocoTestCoverageVerification` gates coverage today.
