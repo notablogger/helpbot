@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Helpbot",
-    "description": "Helpbot Agent API — role-based chat endpoint with Basic Auth.\n\n- **customer/customer** → public knowledge only\n- **employee/employee** → public + internal knowledge",
+    "description": "Helpbot Agent API — role-based chat endpoint with Basic Auth.\n\n- **john/customer** → public knowledge only\n- **joana/employee** → public + internal knowledge",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -36,7 +36,7 @@
         "auth": {
           "type": "basic",
           "basic": [
-            { "key": "username", "value": "customer", "type": "string" },
+            { "key": "username", "value": "john", "type": "string" },
             { "key": "password", "value": "customer", "type": "string" }
           ]
         },
@@ -63,7 +63,7 @@
         "auth": {
           "type": "basic",
           "basic": [
-            { "key": "username", "value": "employee", "type": "string" },
+            { "key": "username", "value": "joana", "type": "string" },
             { "key": "password", "value": "employee", "type": "string" }
           ]
         },

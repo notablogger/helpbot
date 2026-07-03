@@ -93,7 +93,7 @@ export OPENAI_API_KEY=sk-...
 
 ### 2. Start the MCP server first
 
-The MCP server manages all the shared infrastructure (Ollama, pgvector, LocalStack). Start it from the server module:
+The MCP server manages all the shared infrastructure (pgvector, LocalStack). Start it from the server module:
 
 ```bash
 cd ../helpbot-mcp-server
@@ -122,13 +122,13 @@ The agent has a symlinked `compose.yaml` pointing to the root `compose.yaml` so 
 **curl:**
 ```bash
 # As a customer (public docs only)
-curl -u customer:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
+curl -u john:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
 
 # As an employee (public + internal docs)
-curl -u employee:employee "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
+curl -u joana:employee "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
 ```
 
-**Postman:** Import `helpbot.postman_collection.json` from this directory — it has both requests pre-configured.
+**Postman:** Import `helpbot.postman_collection.json` from the repo root — it has both requests pre-configured.
 
 ### On-Premise LLM Setup (Ollama)
 
@@ -140,8 +140,8 @@ For details on switching between providers, see the [Switching Providers](../SWI
 
 | Username | Password | Role |
 |---|---|---|
-| `customer` | `customer` | CUSTOMER |
-| `employee` | `employee` | EMPLOYEE |
+| `john` | `customer` | CUSTOMER |
+| `joana` | `employee` | EMPLOYEE |
 
 ### Build & Test
 

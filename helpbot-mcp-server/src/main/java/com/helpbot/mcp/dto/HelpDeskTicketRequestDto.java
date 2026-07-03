@@ -20,6 +20,7 @@ public class HelpDeskTicketRequestDto
 	@McpToolParam(description = "The ID of the related knowledge base document, if applicable")
 	String documentId;
 
-	@McpToolParam(description = "Type of ticket — MISSING_INFORMATION or WRONG_INFORMATION")
+	@McpToolParam(description = "Type of ticket — NEED_MORE_INFORMATION or WRONG_INFORMATION. "
+			+ "WRONG_INFORMATION should only be used on behalf of an employee.")
 	TicketType ticketType;
 }
