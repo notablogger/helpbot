@@ -29,20 +29,9 @@ returns work", "can I send this back") — that's the biggest unpulled lever.
   enough (e.g. cosine similarity > 0.85) to a previously-answered one gets the cached answer,
   skipping the model call (and, if placed early, the retrieval/tool loop too).
 - **Spring AI 2.0 ships this already** — `SemanticCacheAdvisor` (Redis-backed), same
-  `defaultAdvisors(...)` chain `HelpBotChatClientConfig` already uses, placed at the *front*
-  (cache → memory → RAG/tools → LLM) so a hit short-circuits before memory, tools, or the model:
+  `defaultAdvisors(...)` chain.
 
-```java
-// illustrative — not yet wired into HelpBotChatClientConfig
-SemanticCacheAdvisor cacheAdvisor = SemanticCacheAdvisor.builder()
-        .cache(semanticCache) // backed by a vector store, e.g. Redis
-        .build();
-
-chatClientBuilder
-        .defaultAdvisors(cacheAdvisor, new SimpleLoggerAdvisor(), new HelpBotTokenCountAdvisor(),
-                MessageChatMemoryAdvisor.builder(chatMemory).build())
-        ...
-```
+![Helpbot architecture diagram](helpbot-helpbot.gif)
 
 - Config: `spring.ai.vectorstore.redis.semantic-cache.*` (`enabled`, `similarity-threshold`,
   `index-name`, ...). Redis-backed → adopting it means adding Redis to the stack (not currently
@@ -51,9 +40,8 @@ chatClientBuilder
 **Why it fits here:**
 - Support-bot traffic is exactly the "same intent, many phrasings" pattern semantic caching
   targets; exact-string caching wouldn't catch any of it.
-- No rate limit or token cap today, so a cache hit is the cheapest available mitigation for a
-  spike of near-duplicate questions — no model call, no tool call, no MCP round trip.
-- Dollar savings on `main` (OpenAI); latency/compute savings on `main_ollama_opensource`.
+- No worries for token consumption for agent loop, so a cache hit is the cheapest available mitigation for a
+  spike of near-duplicate questions.
 
 **Where it needs care:**
 - **Partition by role.** `search_admin` answers can surface internal content; `search` can't. A

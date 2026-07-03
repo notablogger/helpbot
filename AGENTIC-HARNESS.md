@@ -6,6 +6,9 @@ text alone.
 
 ## The layers
 
+todo - to be simplified
+
+
 | Layer | File | Controls |
 |---|---|---|
 | Tool allow-list per role | `HelpBotChatClientConfig` + `ToolsUtil.selectToolsFor()` | Which MCP tools a `ChatClient` bean can see — hardcoded `List<String>` per role, set at bean-construction time |
@@ -37,16 +40,13 @@ employee; "need more information" tickets can be raised by anyone.
 - A system prompt is a request, not a constraint — a confused conversation or an adversarial
   "ignore earlier instructions" attempt can produce a tool call that ignores it, and the tool
   honors it regardless.
-- Unauditable — no unit-testable code path for "a customer session can't create a
-  WRONG_INFORMATION ticket," only manual transcript review.
 - Degrades silently — if `helpbot-system.st` is reworded/trimmed and rule 6 weakens or drops,
-  nothing else notices. Contrast: deleting `search_admin` from `ToolsUtil`'s customer list is a
-  one-line, reviewable, mechanically-enforced change.
+  nothing else notices.
 - Competes for attention — one instruction among several in a prompt shared by both roles,
   rather than structurally impossible to violate (like an absent tool).
 
 **Real enforcement would need:** the caller's role to travel from the agent
 (`SecurityContextHolder`) to the MCP server (which doesn't receive it today) — e.g. a header
-`HelpDeskTicketTool`/`HelpDeskTicketService` validates before honoring
+`X-User-Role`, and the `helpbot-server` validates before honoring
 `ticketType=WRONG_INFORMATION`. Cross-repo, cross-process change, out of scope for a prompt fix
 — documented here so the gap is visible rather than silently assumed handled.

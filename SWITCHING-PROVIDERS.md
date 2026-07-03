@@ -10,6 +10,29 @@ This doc walks through how to swap each component.
 
 ---
 
+
+## Why this works without code changes
+
+Spring AI is designed around abstractions:
+
+```
+Your code
+  → ChatModel interface             (prompt → response)
+  → VectorStore interface           (add, similaritySearch, delete)
+  → EmbeddingModel interface        (embed text into vectors)
+
+Spring Boot auto-configuration
+  → picks the right implementation based on which starter is on the classpath
+  → configures it from application.yaml
+```
+
+So `IngestionService`, `SearchService`, and `HelpBotChatClientConfig` talk to interfaces — they never import `PgVectorStore`, `OllamaEmbeddingModel`, or `OllamaChatModel` directly. That's why swapping is just a dependency + config change.
+
+The only thing you need to be careful about: **dimensions must match between the embedding model and the vector store**. If they don't, you'll get errors like `expected 384 dimensions, not 768`.
+
+
+---
+
 ## Switching the chat model
 
 The agent module uses a chat model for reasoning and tool calling. Right now it's OpenAI `gpt-4o-mini`.
@@ -22,7 +45,7 @@ Update `helpbot-agent/src/main/resources/application.yaml`:
 spring.ai.openai.chat.model: gpt-4o    # was gpt-4o-mini
 ```
 
-That's it. Any OpenAI model that supports function calling works.
+That's it. Any OpenAI model that supports tool calling works.
 
 ### Switching to Ollama (local)
 
@@ -147,7 +170,7 @@ implementation 'org.springframework.ai:spring-ai-starter-model-mistral-ai'
 
 ### After switching: drop and re-ingest
 
-Existing embeddings are incompatible with a different model. Drop the table and restart:
+Existing embeddings are incompatible with a different model. You will have to drop the table and restart:
 
 ```sql
 DROP TABLE IF EXISTS public.vector_store;
@@ -247,37 +270,3 @@ If you're leaving pgvector, you can also remove:
 - [pgvector](https://docs.spring.io/spring-ai/reference/api/vectordbs/pgvector.html)
 - [Chroma](https://docs.spring.io/spring-ai/reference/api/vectordbs/chroma.html)
 - [Pinecone](https://docs.spring.io/spring-ai/reference/api/vectordbs/pinecone.html)
-
----
-
-## Why this works without code changes
-
-Spring AI is designed around abstractions:
-
-```
-Your code
-  → ChatModel interface             (prompt → response)
-  → VectorStore interface           (add, similaritySearch, delete)
-  → EmbeddingModel interface        (embed text into vectors)
-
-Spring Boot auto-configuration
-  → picks the right implementation based on which starter is on the classpath
-  → configures it from application.yaml
-```
-
-So `IngestionService`, `SearchService`, and `HelpBotChatClientConfig` talk to interfaces — they never import `PgVectorStore`, `OllamaEmbeddingModel`, or `OllamaChatModel` directly. That's why swapping is just a dependency + config change.
-
-The only thing you need to be careful about: **dimensions must match between the embedding model and the vector store**. If they don't, you'll get errors like `expected 384 dimensions, not 768`.
-
----
-
-## Quick reference
-
-| Switching... | build.gradle | application.yaml | compose.yaml | Java code | Re-ingest? |
-|---|---|---|---|---|---|
-| Chat model (e.g., llama3.2 → mistral) | no changes | update model name | update pull command | no changes | no |
-| Chat provider (e.g., Ollama → OpenAI) | swap model starter | update model config + API key | remove ollama chat pull | no changes | no |
-| Embedding model (e.g., nomic → mxbai) | no changes | update model name + dimensions | update pull command | no changes | yes |
-| Embedding provider (e.g., Ollama → OpenAI) | swap model starter | update model config + dimensions | remove ollama services | no changes | yes |
-| Vector store (e.g., pgvector → Pinecone) | swap vector store starter | update vector store config | swap/remove DB service | no changes | yes |
-| Document storage (e.g., S3 → GCS) | swap cloud starter | update cloud config | swap LocalStack | update S3DocumentService | no |

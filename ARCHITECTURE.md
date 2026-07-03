@@ -4,7 +4,7 @@ Cross-cutting look at how Helpbot works end to end. Per-module file layouts live
 module's README; LLM guardrails specifically live in [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md);
 cost tradeoffs live in [TOKENOMICS.md](TOKENOMICS.md).
 
-![Helpbot architecture diagram](helpbot-helpbot.drawio.png)
+![Helpbot architecture diagram](helpbot-helpbot.gif)
 
 ## RAG
 
