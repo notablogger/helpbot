@@ -10,11 +10,7 @@ cost tradeoffs live in [TOKENOMICS.md](TOKENOMICS.md).
 
 Retrieval is an MCP tool the model chooses to call, not a hardcoded pipeline step.
 
-```
-question → ChatClient (LLM decides whether to call a tool) → search / search_admin (MCP tool)
-         → SearchService → VectorStore.similaritySearch(topK, minSimilarity, filter)
-         → matching chunks → back to the model → model composes the final answer
-```
+![RAG flow](rag.png)
 
 - `SearchService` (`helpbot-mcp-server`): `searchPublic()` filters `internal=false`,
   `searchAll()` (backs `search_admin`) allows both.
@@ -25,17 +21,7 @@ question → ChatClient (LLM decides whether to call a tool) → search / search
 
 ## Ingestion
 
-```
-S3 bucket (public/ or internal/ prefix)
-  → S3IngestionJob (@Scheduled every 5 min) or POST /api/ingest/all
-  → S3DocumentService.ingestFolder(prefix, internal)   lists + downloads via S3Template
-  → IngestionService.chunkAndIngest(resource, internal)
-      → TikaDocumentReader        parses PDF/DOCX/PPTX/etc. into plain text
-      → TokenTextSplitter         chunk-size 384 tokens, max 400 chunks/doc (helpbot.ingestion.chunk-size)
-      → metadata tagging          { internal: bool, source: filename }
-      → VectorStore.add()         embeds each chunk, upserts into pgvector
-  → source object deleted from S3
-```
+![Ingestion flow](ingestion.png)
 
 - No diffing/dedup — every run re-embeds and re-adds whatever's in the bucket; re-ingesting the
   same document produces duplicate chunks rather than an update (no content-hash check to
