@@ -36,8 +36,8 @@ S3 bucket (public/ or internal/ prefix)
 ```
 
 - No diffing/dedup — every run re-embeds and re-adds whatever's in the bucket; re-ingesting the
-  same document produces duplicate chunks rather than an update (no content-hash check like
-  sibling `maitch-search`'s delta-ingestion, ADR-030).
+  same document produces duplicate chunks rather than an update (no content-hash check to
+  detect unchanged documents).
 - S3 is a transient inbox (deleted after ingest); local source of truth is
   `helpbot-mcp-server/localstack/documents/`.
 
@@ -74,11 +74,10 @@ GET /chat?question=... (Basic Auth)
 
 ## Loop
 
-- Unlike sibling `maitch-search-agent` (hand-written Java loop with explicit circuit breakers —
-  `max-clarification-turns`, `max-steps`), the tool-calling loop here is entirely
-  framework-managed: `ChatClient.defaultTools(...)` hands Spring AI the tool list, and it
-  repeats *call model → execute any requested tool → feed result back → call model again* until
-  the model returns plain text.
+- The tool-calling loop here is entirely framework-managed, not a hand-written Java loop with
+  explicit circuit breakers: `ChatClient.defaultTools(...)` hands Spring AI the tool list, and
+  it repeats *call model → execute any requested tool → feed result back → call model again*
+  until the model returns plain text.
 - No application-level step limit, turn cap, or timeout — relies on Spring AI's internal
   defaults (plus the ~10s network timeout per MCP round trip). A model stuck alternating
   between `search` and `getHelpDeskTicketsByUserId` has nothing here stopping it early.
@@ -96,9 +95,8 @@ anywhere in `helpbot-agent`.
   messages. A question that triggers two tool calls costs more tokens *for that request* (see
   [Tokenomics](#tokenomics)) but only adds 2 messages to memory.
 - **20-message sliding window ≈ 10 turns** (`MessageWindowChatMemory`, Spring AI's default max
-  size). Oldest messages evicted once full — no summarization/compression like
-  `maitch-search-agent`'s `Customer: … / Agent asked: …`, so context falls off a cliff at
-  message 21 rather than degrading gracefully.
+  size). Oldest messages evicted once full — no summarization/compression step, so context
+  falls off a cliff at message 21 rather than degrading gracefully.
 - **In-memory, no TTL, not shared across instances.** Default `InMemoryChatMemoryRepository` —
   no JDBC/Redis chat-memory starter on the classpath. Lost on restart, invisible to a second
   instance if scaled out, never expires by age (only the 20-message window bounds it).

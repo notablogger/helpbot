@@ -8,14 +8,14 @@ thing not yet in place to control it.
 Nothing in this codebase currently caps token spend:
 
 - **No `max-tokens` / output cap.** `application.yaml`'s `spring.ai.openai.chat.*` (or
-  `spring.ai.ollama.chat.*` on `main_ollama_opensource`) sets only the model name. Compare
-  `maitch-search-agent`, which caps `max-tokens: 600` (ADR-A02).
+  `spring.ai.ollama.chat.*` on `main_ollama_opensource`) sets only the model name — no ceiling
+  on response length.
 - **Chat memory grows per turn, up to a 20-message window.** Every retained message is re-sent
   as context on every call. See [ARCHITECTURE.md#chat-memory](ARCHITECTURE.md#chat-memory) —
   keyed by username, no compression, no persistence, not shared across instances.
 - **Each tool call is a full extra model round trip.** No step limit on the tool-calling loop
   ([ARCHITECTURE.md#loop](ARCHITECTURE.md#loop)) — search + ticket creation = 3+ model calls.
-- **No rate limiting.** No equivalent of `maitch-search-agent`'s `RateLimitFilter` on `/chat`.
+- **No rate limiting** on `/chat` — nothing bounds request volume per caller.
 - **Ingestion re-embeds with no dedup.** 384-token chunks, up to 400/document, re-embedded on
   every run regardless of change (see [ARCHITECTURE.md#ingestion](ARCHITECTURE.md#ingestion)).
 
