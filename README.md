@@ -11,7 +11,11 @@ A two-module Spring Boot RAG (Retrieval Augmented Generation) application built 
 
 ## Architecture
 
-![Helpbot architecture diagram](helpbot-helpbot.drawio.png)
+Two Spring Boot services joined over MCP — `helpbot-agent` (chat client, role-based routing)
+and `helpbot-mcp-server` (retrieval + ingestion), backed by pgvector and S3. For the full
+diagram and a deeper walkthrough (RAG, ingestion, MCP, the agent loop, and the agentic harness),
+see **[ARCHITECTURE.md](ARCHITECTURE.md)**. For token/compute cost and where semantic caching
+would help, see **[TOKENOMICS.md](TOKENOMICS.md)**.
 
 **Stack:** Java 25 · Spring Boot 4.1.0 · Spring AI 2.0.0 · OpenAI · pgvector · LocalStack (S3) · Apache Tika
 
@@ -20,12 +24,6 @@ A two-module Spring Boot RAG (Retrieval Augmented Generation) application built 
 ### [helpbot-mcp-server](helpbot-mcp-server/README.md)
 
 The backend. Reads documents from S3, chunks them with Tika, generates embeddings via OpenAI (`text-embedding-3-small`), stores them in pgvector, and exposes MCP tools for search and ticket management. This is where all the RAG infrastructure lives.
-
-**Tools exposed:**
-- `search` — public document search
-- `search_admin` — public + internal document search
-- `createHelpDeskTicket` — create a help desk ticket
-- `getHelpDeskTicketsByUserId` — query tickets by user
 
 ### [helpbot-agent](helpbot-agent/README.md)
 
@@ -62,12 +60,6 @@ curl -u john:customer "http://localhost:8081/chat?question=What%20are%20the%20co
 ```
 
 Check each module's README for detailed setup instructions.
-
-## Architecture
-
-For how RAG, ingestion, MCP, the agent loop, and the agentic harness fit together across both
-modules, see **[ARCHITECTURE.md](ARCHITECTURE.md)**. For what drives token/compute cost and
-where semantic caching would help, see **[TOKENOMICS.md](TOKENOMICS.md)**.
 
 ## Switching Providers
 
