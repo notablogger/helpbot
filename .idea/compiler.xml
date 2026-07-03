@@ -9,7 +9,7 @@
           <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok-mapstruct-binding/0.2.0/2f1cf9ced7b720ba4996c942b816669e63f0fa4f/lombok-mapstruct-binding-0.2.0.jar" />
           <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.mapstruct/mapstruct-processor/1.7.0.Beta2/ffc6e81a60f5c6d77b8295749053c3d560e5d51f/mapstruct-processor-1.7.0.Beta2.jar" />
         </processorPath>
-        <module name="helpbot-agent.main" />
+        <module name="helpbot-mcp-server.main" />
       </profile>
       <profile name="Gradle Imported" enabled="true">
         <outputRelativeToContentRoot value="true" />
@@ -17,7 +17,7 @@
           <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.46/a5cfe99fdf320e84955ef653f2ce1bf789d11385/lombok-1.18.46.jar" />
           <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.mapstruct/mapstruct-processor/1.7.0.Beta2/ffc6e81a60f5c6d77b8295749053c3d560e5d51f/mapstruct-processor-1.7.0.Beta2.jar" />
         </processorPath>
-        <module name="helpbot-agent.test" />
+        <module name="helpbot-mcp-server.test" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel target="25" />

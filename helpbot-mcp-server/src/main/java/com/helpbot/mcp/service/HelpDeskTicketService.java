@@ -28,6 +28,6 @@ public class HelpDeskTicketService
 
 	public List<HelpDeskTicketResponseDto> findAllHelpDeskTicket(String documentId)
 	{
-		return helpDeskTicketMapper.toHelpDeskTicketsResponseDto(helpDeskTicketRepository.findByDocumentId(documentId));
+		return helpDeskTicketMapper.toHelpDeskTicketsResponseDto(helpDeskTicketRepository.findByUserId(documentId));
 	}
 }

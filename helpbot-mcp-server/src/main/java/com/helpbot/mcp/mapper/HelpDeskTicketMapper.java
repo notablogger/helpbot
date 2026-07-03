@@ -14,8 +14,10 @@ import com.helpbot.mcp.rds.entity.HelpDeskTicket;
 public interface HelpDeskTicketMapper
 {
 	@Mapping(target = "id", ignore = true)
+	@Mapping(target = "raisedBy", source = "userId")
 	HelpDeskTicket toHelpDeskTicket(HelpDeskTicketRequestDto helpDeskTicketRequestDto);
 
+	@Mapping(target = "userId", source = "raisedBy")
 	HelpDeskTicketResponseDto toHelpDeskTicketResponseDto(HelpDeskTicket helpDeskTicket);
 
 	List<HelpDeskTicketResponseDto> toHelpDeskTicketsResponseDto(List<HelpDeskTicket> byDocumentId);

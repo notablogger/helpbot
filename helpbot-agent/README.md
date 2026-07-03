@@ -9,7 +9,7 @@ The client/agent side of the Helpbot RAG system. It talks to the [MCP server](..
 | Java | 25 |
 | Spring Boot | 4.1.0 |
 | Spring AI | 2.0.0 |
-| LLM | Ollama (`llama3.2:latest` by default) |
+| LLM | OpenAI (`gpt-4o-mini`) |
 | MCP transport | Streamable HTTP |
 | Auth | Spring Security (Basic Auth) |
 | API docs | SpringDoc OpenAPI 2.8.8 |
@@ -20,8 +20,8 @@ There's one endpoint — `GET /chat?question=...` — protected by basic auth. D
 
 | Role | Tools Available | What it means |
 |---|---|---|
-| `CUSTOMER` | `search`, `createHelpDeskTicket`, `getHelpDeskTicketsByDocumentId` | Public documents only |
-| `EMPLOYEE` | `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByDocumentId` | Public **and** internal documents |
+| `CUSTOMER` | `search`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId` | Public documents only |
+| `EMPLOYEE` | `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId` | Public **and** internal documents |
 
 The routing happens in `HelpBotService` — it checks `SecurityContextHolder` for the current role and picks the right `ChatClient` bean.
 
@@ -31,12 +31,10 @@ The `ToolsUtil` class handles filtering MCP tools at startup. Instead of giving 
 
 ```java
 // Customer chat client — public search only
-ToolsUtil.selectToolsFor(mcpClients, null,
-    List.of("createHelpDeskTicket", "search", "getHelpDeskTicketsByDocumentId"));
+ToolsUtil.selectToolsFor(mcpClients, null,List.of("createHelpDeskTicket", "search", "getHelpDeskTicketsByUserId"));
 
 // Employee chat client — admin search (public + internal)
-ToolsUtil.selectToolsFor(mcpClients, null,
-    List.of("createHelpDeskTicket", "search_admin", "getHelpDeskTicketsByDocumentId"));
+ToolsUtil.selectToolsFor(mcpClients, null,List.of("createHelpDeskTicket", "search_admin", "getHelpDeskTicketsByUserId"));
 ```
 
 `selectToolsFor` walks through all connected MCP clients, filters tools by name, and returns only matching `ToolCallback` instances. This keeps the tool surface tight per role.
@@ -57,9 +55,10 @@ The main config lives in `application.yaml`:
 ```yaml
 spring:
   ai:
-    ollama:
+    openai:
+      api-key: ${OPENAI_API_KEY}
       chat:
-        model: llama3.2:latest          # swap this for any Ollama-compatible model
+        model: gpt-4o-mini
     mcp:
       client:
         streamable-http:
@@ -71,7 +70,9 @@ server:
   port: 8081
 ```
 
-Swap the chat model by changing `spring.ai.ollama.chat.model`. The model needs to support tool calling — not all do. `llama3.2` works well.
+Swap the chat model by changing `spring.ai.openai.chat.model`. Any OpenAI model that supports function calling works (`gpt-4o`, `gpt-4o-mini`, etc.).
+
+> **Want to run locally with Ollama instead?** Use the [`main_ollama_opensource`](https://github.com/notablogger/helpbot/tree/main_ollama_opensource) branch.
 
 ---
 
@@ -80,12 +81,19 @@ Swap the chat model by changing `spring.ai.ollama.chat.model`. The model needs t
 ### Prerequisites
 
 - Java 25
-- Docker (for Ollama, pgvector, LocalStack — all managed via Docker Compose)
+- Docker (for pgvector, LocalStack — managed via Docker Compose)
+- An OpenAI API key
 - The [MCP server](../helpbot-mcp-server/README.md) running (it owns the Docker Compose infra)
 
-### 1. Start the MCP server first
+### 1. Set your OpenAI API key
 
-The MCP server manages all the shared infrastructure (Ollama, pgvector, LocalStack). Start it from the server module:
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
+### 2. Start the MCP server first
+
+The MCP server manages all the shared infrastructure (pgvector, LocalStack). Start it from the server module:
 
 ```bash
 cd ../helpbot-mcp-server
@@ -94,7 +102,7 @@ cd ../helpbot-mcp-server
 
 This spins up Docker Compose with everything the agent needs.
 
-### 2. Run the agent
+### 3. Run the agent
 
 ```bash
 cd helpbot-agent
@@ -102,36 +110,38 @@ cd helpbot-agent
 ```
 
 The agent connects to:
-- **Ollama** on the Docker-mapped port (auto-discovered via Docker Compose)
+- **OpenAI API** for chat completions
 - **MCP server** on `http://localhost:8080/mcp`
 
 The agent has a symlinked `compose.yaml` pointing to the root `compose.yaml` so Spring Boot Docker Compose support can discover container ports.
 
-### 3. Test it
+### 4. Test it
 
 **Swagger UI:** [http://localhost:8081/swagger-ui.html](http://localhost:8081/swagger-ui.html)
 
 **curl:**
 ```bash
 # As a customer (public docs only)
-curl -u customer:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
+curl -u john:customer "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
 
 # As an employee (public + internal docs)
-curl -u employee:employee "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
+curl -u joana:employee "http://localhost:8081/chat?question=What%20are%20the%20company%20policies?"
 ```
 
-**Postman:** Import `helpbot.postman_collection.json` from this directory — it has both requests pre-configured.
+**Postman:** Import `helpbot.postman_collection.json` from the repo root — it has both requests pre-configured.
 
 ### On-Premise LLM Setup (Ollama)
 
-For details on running Ollama locally, switching models, and embedding provider setup, check the [`main_ollama_opensource`](https://github.com/notablogger/helpbot/tree/main_ollama_opensource) branch and the [Switching Providers](../SWITCHING-PROVIDERS.md) guide.
+If you want to run everything locally without an OpenAI key, use the [`main_ollama_opensource`](https://github.com/notablogger/helpbot/tree/main_ollama_opensource) branch. It uses Ollama for both chat and embeddings — everything runs in Docker, no external API calls.
+
+For details on switching between providers, see the [Switching Providers](../SWITCHING-PROVIDERS.md) guide.
 
 ### Default Credentials (local profile)
 
 | Username | Password | Role |
 |---|---|---|
-| `customer` | `customer` | CUSTOMER |
-| `employee` | `employee` | EMPLOYEE |
+| `john` | `customer` | CUSTOMER |
+| `joana` | `employee` | EMPLOYEE |
 
 ### Build & Test
 
@@ -140,4 +150,3 @@ For details on running Ollama locally, switching models, and embedding provider 
 ./gradlew test           # just tests
 ./gradlew bootRun        # run the agent
 ```
-

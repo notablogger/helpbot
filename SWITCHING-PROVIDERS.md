@@ -1,57 +1,91 @@
 # Switching Providers
 
-One of the nice things about Spring AI is that it abstracts away the actual providers behind interfaces. Your code talks to `VectorStore`, `EmbeddingModel`, and `ChatModel` — it doesn't care if the embeddings come from Ollama, OpenAI, or anything else. Same for the vector store and chat model.
+One of the nice things about Spring AI is that it abstracts away the actual providers behind interfaces. Your code talks to `VectorStore`, `EmbeddingModel`, and `ChatModel` — it doesn't care if they come from OpenAI, Ollama, or anything else. Same for the vector store.
 
 So switching providers is mostly a matter of swapping a dependency in `build.gradle` and updating `application.yaml`. No code changes needed in most cases.
+
+> **Looking for a fully local setup?** The [`main_ollama_opensource`](https://github.com/notablogger/helpbot/tree/main_ollama_opensource) branch has everything wired up for Ollama — no API keys needed.
 
 This doc walks through how to swap each component.
 
 ---
 
+
+## Why this works without code changes
+
+Spring AI is designed around abstractions:
+
+```
+Your code
+  → ChatModel interface             (prompt → response)
+  → VectorStore interface           (add, similaritySearch, delete)
+  → EmbeddingModel interface        (embed text into vectors)
+
+Spring Boot auto-configuration
+  → picks the right implementation based on which starter is on the classpath
+  → configures it from application.yaml
+```
+
+So `IngestionService`, `SearchService`, and `HelpBotChatClientConfig` talk to interfaces — they never import `PgVectorStore`, `OllamaEmbeddingModel`, or `OllamaChatModel` directly. That's why swapping is just a dependency + config change.
+
+The only thing you need to be careful about: **dimensions must match between the embedding model and the vector store**. If they don't, you'll get errors like `expected 384 dimensions, not 768`.
+
+
+---
+
 ## Switching the chat model
 
-The agent module uses a chat model for reasoning and tool calling. Right now it's `llama3.2:latest` running on Ollama.
+The agent module uses a chat model for reasoning and tool calling. Right now it's OpenAI `gpt-4o-mini`.
 
-### What to change
-
-**1. Staying on Ollama — just swap the model:**
+### Staying on OpenAI — just swap the model
 
 Update `helpbot-agent/src/main/resources/application.yaml`:
 
 ```yaml
-spring.ai.ollama.chat.model: llama3.2:latest    # change this
+spring.ai.openai.chat.model: gpt-4o    # was gpt-4o-mini
 ```
 
-And update the model pull in `compose.yaml`:
+That's it. Any OpenAI model that supports tool calling works.
 
-```yaml
-ollama-model-pull-chat:
-  command: ["pull", "mistral:latest"]            # new model
-```
-
-> **Important:** The model must support tool/function calling. Not all Ollama models do. Models known to work: `llama3.2`, `mistral`, `qwen2.5`, `command-r`.
-
-**2. Switching provider entirely (e.g., Ollama → OpenAI):**
+### Switching to Ollama (local)
 
 In `helpbot-agent/build.gradle`:
 
 ```groovy
 // Remove
-implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
+implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 
 // Add
-implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
 ```
 
 In `helpbot-agent/src/main/resources/application.yaml`:
 
 ```yaml
 # Remove
-spring.ai.ollama.chat.model: llama3.2:latest
+spring.ai.openai.api-key: ${OPENAI_API_KEY}
+spring.ai.openai.chat.model: gpt-4o-mini
 
 # Add
-spring.ai.openai.api-key: ${OPENAI_API_KEY}
-spring.ai.openai.chat.model: gpt-4o
+spring.ai.ollama.chat.model: llama3.2:latest
+```
+
+> **Important:** The model must support tool/function calling. Not all Ollama models do. Models known to work: `llama3.2`, `mistral`, `qwen2.5`, `command-r`.
+
+### Other providers
+
+```groovy
+// Azure OpenAI
+implementation 'org.springframework.ai:spring-ai-starter-model-azure-openai'
+
+// Anthropic (Claude)
+implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
+
+// AWS Bedrock
+implementation 'org.springframework.ai:spring-ai-starter-model-bedrock'
+
+// Google Vertex AI
+implementation 'org.springframework.ai:spring-ai-starter-model-vertex-ai'
 ```
 
 ### What you DON'T need to change
@@ -64,76 +98,85 @@ spring.ai.openai.chat.model: gpt-4o
 
 | Model | Provider | Tool calling | Notes |
 |---|---|---|---|
-| `llama3.2` | Ollama | ✅ | Good default, what we use now |
+| `gpt-4o-mini` | OpenAI | ✅ | What we use now, good balance of cost and quality |
+| `gpt-4o` | OpenAI | ✅ | Best quality, more expensive |
+| `claude-3.5-sonnet` | Anthropic | ✅ | Strong reasoning |
+| `llama3.2` | Ollama | ✅ | Free, runs locally |
 | `mistral` | Ollama | ✅ | Fast, solid tool calling |
 | `qwen2.5` | Ollama | ✅ | Strong reasoning |
 | `command-r` | Ollama | ✅ | Built for RAG |
 | `gemma3` | Ollama | ❌ | No tool calling support |
-| `gpt-4o` | OpenAI | ✅ | Best quality, paid |
-| `gpt-4o-mini` | OpenAI | ✅ | Cheaper, still good |
-| `claude-3.5-sonnet` | Anthropic | ✅ | Strong reasoning, paid |
 
 ### Official docs
 
 - [Spring AI Chat Models](https://docs.spring.io/spring-ai/reference/api/chatmodel.html)
-- [Ollama Chat](https://docs.spring.io/spring-ai/reference/api/chat/ollama-chat.html)
 - [OpenAI Chat](https://docs.spring.io/spring-ai/reference/api/chat/openai-chat.html)
+- [Ollama Chat](https://docs.spring.io/spring-ai/reference/api/chat/ollama-chat.html)
 
 ---
 
 ## Switching the embedding model
 
-The MCP server uses an embedding model to convert document chunks into vectors. Right now it's `nomic-embed-text` running on Ollama (768 dimensions).
+The MCP server uses an embedding model to convert document chunks into vectors. Right now it's OpenAI `text-embedding-3-small` (1536 dimensions).
 
-### What to change
-
-**1. Staying on Ollama — just swap the model:**
+### Staying on OpenAI — just swap the model
 
 Update `helpbot-mcp-server/src/main/resources/application.yaml`:
 
 ```yaml
-spring.ai.ollama.embedding.model: nomic-embed-text   # change this
-spring.ai.vectorstore.pgvector.dimensions: 768        # must match model output
+spring.ai.openai.embedding.model: text-embedding-3-large    # was text-embedding-3-small
+spring.ai.vectorstore.pgvector.dimensions: 3072              # must match model output
 ```
 
-And update the model pull in `compose.yaml`:
-
-```yaml
-ollama-model-pull-embedding:
-  command: ["pull", "mxbai-embed-large"]              # new model
-```
-
-**2. Switching provider entirely (e.g., Ollama → OpenAI):**
+### Switching to Ollama (local)
 
 In `helpbot-mcp-server/build.gradle`:
 
 ```groovy
 // Remove
-implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
+implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 
 // Add
-implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
 ```
 
 In `helpbot-mcp-server/src/main/resources/application.yaml`:
 
 ```yaml
 # Remove
-spring.ai.ollama.embedding.model: nomic-embed-text
-
-# Add
 spring.ai.openai.api-key: ${OPENAI_API_KEY}
 spring.ai.openai.embedding.model: text-embedding-3-small
-spring.ai.vectorstore.pgvector.dimensions: 1536       # match the new model
+
+# Add
+spring.ai.ollama.embedding.model: nomic-embed-text
+spring.ai.vectorstore.pgvector.dimensions: 768        # match the model
 ```
 
-**3. Drop the vector_store table** — existing embeddings are incompatible with a different model:
+### Other providers
+
+```groovy
+// Azure OpenAI
+implementation 'org.springframework.ai:spring-ai-starter-model-azure-openai'
+
+// AWS Bedrock (Titan, Cohere)
+implementation 'org.springframework.ai:spring-ai-starter-model-bedrock'
+
+// Google Vertex AI
+implementation 'org.springframework.ai:spring-ai-starter-model-vertex-ai'
+
+// Mistral AI
+implementation 'org.springframework.ai:spring-ai-starter-model-mistral-ai'
+```
+
+### After switching: drop and re-ingest
+
+Existing embeddings are incompatible with a different model. You will have to drop the table and restart:
 
 ```sql
 DROP TABLE IF EXISTS public.vector_store;
 ```
 
-Restart the server — Spring AI recreates it with the new dimensions.
+Spring AI recreates it with the new dimensions on startup.
 
 ### What you DON'T need to change
 
@@ -143,24 +186,24 @@ Restart the server — Spring AI recreates it with the new dimensions.
 
 ### Embedding dimensions reference
 
-| Model | Provider | Dimensions | Size |
-|---|---|---|---|
-| `nomic-embed-text` | Ollama | 768 | 274MB |
-| `mxbai-embed-large` | Ollama | 1024 | 670MB |
-| `all-minilm` | Ollama | 384 | 45MB |
-| `snowflake-arctic-embed` | Ollama | 1024 | 670MB |
-| `text-embedding-3-small` | OpenAI | 1536 | — |
-| `text-embedding-3-large` | OpenAI | 3072 | — |
-| `text-embedding-ada-002` | OpenAI/Azure | 1536 | — |
-| `amazon.titan-embed-text-v2` | AWS Bedrock | 1024 | — |
+| Model | Provider | Dimensions |
+|---|---|---|
+| `text-embedding-3-small` | OpenAI | 1536 |
+| `text-embedding-3-large` | OpenAI | 3072 |
+| `text-embedding-ada-002` | OpenAI/Azure | 1536 |
+| `nomic-embed-text` | Ollama | 768 |
+| `mxbai-embed-large` | Ollama | 1024 |
+| `all-minilm` | Ollama | 384 |
+| `snowflake-arctic-embed` | Ollama | 1024 |
+| `amazon.titan-embed-text-v2` | AWS Bedrock | 1024 |
 
-> **pgvector HNSW index limit:** max 2000 dimensions. If your model outputs more than that (e.g., `qwen3-embedding` at 4096), pgvector will reject it. Pick a model that fits.
+> **pgvector HNSW index limit:** max 2000 dimensions. If your model outputs more than that (e.g., `text-embedding-3-large` at 3072), you'll need to use a different index type or pick a smaller model.
 
 ### Official docs
 
 - [Spring AI Embedding Models](https://docs.spring.io/spring-ai/reference/api/embeddings.html)
-- [Ollama Embeddings](https://docs.spring.io/spring-ai/reference/api/embeddings/ollama-embeddings.html)
 - [OpenAI Embeddings](https://docs.spring.io/spring-ai/reference/api/embeddings/openai-embeddings.html)
+- [Ollama Embeddings](https://docs.spring.io/spring-ai/reference/api/embeddings/ollama-embeddings.html)
 
 ---
 
@@ -227,38 +270,3 @@ If you're leaving pgvector, you can also remove:
 - [pgvector](https://docs.spring.io/spring-ai/reference/api/vectordbs/pgvector.html)
 - [Chroma](https://docs.spring.io/spring-ai/reference/api/vectordbs/chroma.html)
 - [Pinecone](https://docs.spring.io/spring-ai/reference/api/vectordbs/pinecone.html)
-
----
-
-## Why this works without code changes
-
-Spring AI is designed around abstractions:
-
-```
-Your code
-  → ChatModel interface             (prompt → response)
-  → VectorStore interface           (add, similaritySearch, delete)
-  → EmbeddingModel interface        (embed text into vectors)
-
-Spring Boot auto-configuration
-  → picks the right implementation based on which starter is on the classpath
-  → configures it from application.yaml
-```
-
-So `IngestionService`, `SearchService`, and `HelpBotChatClientConfig` talk to interfaces — they never import `PgVectorStore`, `OllamaEmbeddingModel`, or `OllamaChatModel` directly. That's why swapping is just a dependency + config change.
-
-The only thing you need to be careful about: **dimensions must match between the embedding model and the vector store**. If they don't, you'll get errors like `expected 384 dimensions, not 768`.
-
----
-
-## Quick reference
-
-| Switching... | build.gradle | application.yaml | compose.yaml | Java code | Re-ingest? |
-|---|---|---|---|---|---|
-| Chat model (e.g., llama3.2 → mistral) | no changes | update model name | update pull command | no changes | no |
-| Chat provider (e.g., Ollama → OpenAI) | swap model starter | update model config + API key | remove ollama chat pull | no changes | no |
-| Embedding model (e.g., nomic → mxbai) | no changes | update model name + dimensions | update pull command | no changes | yes |
-| Embedding provider (e.g., Ollama → OpenAI) | swap model starter | update model config + dimensions | remove ollama services | no changes | yes |
-| Vector store (e.g., pgvector → Pinecone) | swap vector store starter | update vector store config | swap/remove DB service | no changes | yes |
-| Document storage (e.g., S3 → GCS) | swap cloud starter | update cloud config | swap LocalStack | update S3DocumentService | no |
-

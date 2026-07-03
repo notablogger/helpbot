@@ -4,7 +4,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,15 +32,16 @@ public class HelpBotChatClientConfig
 	@Bean
 	public ChatClient helpBotChatClient(Builder chatClientBuilder,
 			ToolCallbackProvider mcpTools,
-			@Value("classpath:/prompts/helpbot-system.st") Resource systemPrompt)
+			@Value("classpath:/prompts/helpbot-system.st") Resource systemPrompt, ChatMemory chatMemory)
 	{
 		ToolCallback[] toolCallbacks = ToolsUtil.selectToolsFor(mcpClients, null,
-				Arrays.asList("createHelpDeskTicket", "getHelpDeskTicketsByDocumentId", "search"));
+				Arrays.asList("createHelpDeskTicket", "getHelpDeskTicketsByUserId", "search"));
 
 		return chatClientBuilder
 				// Give the model instructions for how to work the helpbot,
 				.defaultSystem(sys -> sys.text(systemPrompt)
-				).defaultAdvisors(new SimpleLoggerAdvisor(), new HelpBotTokenCountAdvisor())
+				).defaultAdvisors(new SimpleLoggerAdvisor(), new HelpBotTokenCountAdvisor(),
+						MessageChatMemoryAdvisor.builder(chatMemory).build())
 				// Expose limited tool the MCP server publishes. Spring AI auto-executes
 				// these in a loop, so the LLM can take as many steps as it needs.
 				.defaultTools(toolCallbacks)
@@ -47,15 +50,17 @@ public class HelpBotChatClientConfig
 
 	@Bean
 	public ChatClient helpBotInternalChatClient(Builder chatClientBuilder,
-			@Value("classpath:/prompts/helpbot-system.st") Resource systemPrompt)
+			ToolCallbackProvider mcpTools,
+			@Value("classpath:/prompts/helpbot-system.st") Resource systemPrompt, ChatMemory chatMemory)
 	{
 		ToolCallback[] toolCallbacks = ToolsUtil.selectToolsFor(mcpClients, null,
-				Arrays.asList("createHelpDeskTicket", "search_admin", "getHelpDeskTicketsByDocumentId"));
+				Arrays.asList("createHelpDeskTicket", "search_admin", "getHelpDeskTicketsByUserId"));
 
 		return chatClientBuilder
 				// Give the model instructions for how to work the helpbot,
 				.defaultSystem(sys -> sys.text(systemPrompt)
-				).defaultAdvisors(new SimpleLoggerAdvisor(), new HelpBotTokenCountAdvisor())
+				).defaultAdvisors(new SimpleLoggerAdvisor(), new HelpBotTokenCountAdvisor(),
+						MessageChatMemoryAdvisor.builder(chatMemory).build())
 				// Expose limited tool the MCP server publishes. Spring AI auto-executes
 				// these in a loop, so the LLM can take as many steps as it needs.
 				.defaultTools(toolCallbacks)
