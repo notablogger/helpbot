@@ -1,14 +1,12 @@
 # Architecture
 
-A deeper, cross-cutting look at how Helpbot works end to end — pulling together pieces that
-each live in their own file/class but only make sense together. For per-module file layouts,
-see each module's own README; for the LLM-facing guardrails specifically, see
-[AGENTIC-HARNESS.md](AGENTIC-HARNESS.md), which this doc summarizes and links out to.
+Cross-cutting look at how Helpbot works end to end. Per-module file layouts live in each
+module's README; LLM guardrails specifically live in [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md);
+cost tradeoffs live in [TOKENOMICS.md](TOKENOMICS.md).
 
 ## RAG
 
-Helpbot is retrieval-augmented generation with a twist: retrieval is exposed as an MCP tool the
-model chooses to call, not a step hardcoded into a fixed pipeline.
+Retrieval is an MCP tool the model chooses to call, not a hardcoded pipeline step.
 
 ```
 question → ChatClient (LLM decides whether to call a tool) → search / search_admin (MCP tool)
@@ -16,12 +14,12 @@ question → ChatClient (LLM decides whether to call a tool) → search / search
          → matching chunks → back to the model → model composes the final answer
 ```
 
-`SearchService` (`helpbot-mcp-server`) is the retrieval core: `searchPublic()` filters on
-`internal=false`, `searchAll()` (backing `search_admin`) allows both. `topK` and
-`minSimilarity` come from `helpbot.search.*` (`SearchConfig`) — 5 and 0.35 by default. There's
-no reranking step and no query rewriting; the raw question text is embedded and matched
-directly. The `internal` metadata flag set at ingestion time is the *only* access-control
-signal — see the [Agentic Harness](#agentic-harness) section for why that matters.
+- `SearchService` (`helpbot-mcp-server`): `searchPublic()` filters `internal=false`,
+  `searchAll()` (backs `search_admin`) allows both.
+- `topK`/`minSimilarity` from `helpbot.search.*` (`SearchConfig`) — 5 / 0.35 by default.
+- No reranking, no query rewriting — raw question text is embedded and matched directly.
+- `internal` metadata (set at ingestion) is the *only* access-control signal — see
+  [Agentic Harness](#agentic-harness).
 
 ## Ingestion
 
@@ -37,35 +35,26 @@ S3 bucket (public/ or internal/ prefix)
   → source object deleted from S3
 ```
 
-There's no diffing or dedup — every run re-embeds and re-adds whatever's currently in the
-bucket, and S3 is a transient inbox (files are deleted immediately after ingest; the real
-source of truth for local dev is `helpbot-mcp-server/localstack/documents/`). This means
-re-running ingestion against the same document produces duplicate chunks in pgvector rather
-than an update — there's no content-hash check like the sibling `maitch-search` project's
-delta-ingestion (`ingestAll(products, firstLoad)`, ADR-030 there). Worth knowing if you're
-testing repeated ingestion locally.
+- No diffing/dedup — every run re-embeds and re-adds whatever's in the bucket; re-ingesting the
+  same document produces duplicate chunks rather than an update (no content-hash check like
+  sibling `maitch-search`'s delta-ingestion, ADR-030).
+- S3 is a transient inbox (deleted after ingest); local source of truth is
+  `helpbot-mcp-server/localstack/documents/`.
 
 ## MCP
 
-`helpbot-mcp-server` is the MCP server, exposing 4 tools over Streamable HTTP at `/mcp`:
-`search`, `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`. Tool names are
-explicit on `@McpTool` because Spring AI's MCP server support otherwise derives camelCase names
-from the method.
-
-`helpbot-agent` is the MCP *client*, connecting via `McpSyncClient` over Streamable HTTP
-(`spring.ai.mcp.client.streamable-http.connections.helpbot-mcp-server.url`). This connection is
-made **eagerly and synchronously at application context startup** — if the server isn't
-reachable, the agent fails to start entirely (a known upstream limitation, not something
-configurable here — see [spring-ai#3232](https://github.com/spring-projects/spring-ai/issues/3232)).
-That's why CI builds the agent module without running its `@SpringBootTest` — see `CLAUDE.md`.
-
-There's no authentication on `/mcp` at all — anything that can reach the port can call any
-tool. This is fine for local dev; it's the first thing to add before this MCP server is
-reachable from anywhere untrusted.
+- `helpbot-mcp-server`: 4 tools over Streamable HTTP at `/mcp` — `search`, `search_admin`,
+  `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`. Explicit names on `@McpTool` (Spring AI
+  otherwise derives camelCase from the method).
+- `helpbot-agent`: MCP *client* via `McpSyncClient`
+  (`spring.ai.mcp.client.streamable-http.connections.helpbot-mcp-server.url`), connected
+  **eagerly and synchronously at context startup** — unreachable server = agent fails to start
+  entirely (upstream limitation, [spring-ai#3232](https://github.com/spring-projects/spring-ai/issues/3232)).
+  This is why CI builds the agent module without running its `@SpringBootTest` (see `CLAUDE.md`).
+- No authentication on `/mcp` at all — fine for local dev, first thing to add before exposing
+  this server anywhere untrusted.
 
 ## Agent
-
-`helpbot-agent` is a thin routing layer in front of the LLM:
 
 ```
 GET /chat?question=... (Basic Auth)
@@ -77,91 +66,76 @@ GET /chat?question=... (Basic Auth)
   → plain-text answer
 ```
 
-Both `ChatClient` beans are built once at startup in `HelpBotChatClientConfig`, each pre-filtered
-to its tool allow-list via `ToolsUtil.selectToolsFor()`. There's exactly one HTTP endpoint —
-no separate "continue conversation" endpoint; every call to `/chat` (first message or the
-tenth) goes through the same path, with continuity provided entirely by chat memory keyed on
-username.
+- Both `ChatClient` beans built once at startup (`HelpBotChatClientConfig`), each pre-filtered
+  to its tool allow-list via `ToolsUtil.selectToolsFor()`.
+- One HTTP endpoint, no separate "continue conversation" endpoint — every `/chat` call (1st or
+  10th) goes through the same path; continuity comes entirely from chat memory keyed on
+  username.
 
 ## Loop
 
-Unlike the sibling `maitch-search-agent` repo — which hand-writes its agent loop in Java with
-explicit circuit breakers (`max-clarification-turns`, `max-steps` in `SearchAgentService`) — the
-tool-calling loop here is entirely framework-managed. `ChatClient.defaultTools(...)` hands
-Spring AI the tool list, and Spring AI internally repeats *call model → if it requested a tool,
-execute it and feed the result back → call model again* until the model responds with plain
-text instead of a tool call. There is no application-level step limit, turn cap, or timeout on
-this loop in `helpbot-agent` — it relies entirely on Spring AI's internal defaults (and, at the
-tool level, the 10s-ish network timeout inherent to each MCP round trip). A model stuck
-alternating between `search` and `getHelpDeskTicketsByUserId` has nothing in this codebase
-stopping it early.
+- Unlike sibling `maitch-search-agent` (hand-written Java loop with explicit circuit breakers —
+  `max-clarification-turns`, `max-steps`), the tool-calling loop here is entirely
+  framework-managed: `ChatClient.defaultTools(...)` hands Spring AI the tool list, and it
+  repeats *call model → execute any requested tool → feed result back → call model again* until
+  the model returns plain text.
+- No application-level step limit, turn cap, or timeout — relies on Spring AI's internal
+  defaults (plus the ~10s network timeout per MCP round trip). A model stuck alternating
+  between `search` and `getHelpDeskTicketsByUserId` has nothing here stopping it early.
 
 ## Chat Memory
 
-Cross-turn continuity is entirely `MessageChatMemoryAdvisor`'s job — there's no explicit
-session object anywhere in `helpbot-agent`. A few specifics worth knowing:
+Cross-turn continuity is entirely `MessageChatMemoryAdvisor`'s job — no explicit session object
+anywhere in `helpbot-agent`.
 
-- **Keyed by username, not by a client-supplied conversation ID.** `HelpBotService.chat()` binds
-  `CONVERSATION_ID = getUserName()` on every call. There's no way for one authenticated user to
-  hold two parallel conversations, and no way for the caller to start a fresh one short of a
-  different user logging in — `/chat` has no "reset" or "new conversation" affordance.
-- **Tool calls don't inflate the memory window.** `MessageChatMemoryAdvisor` is added at its
-  default position (`HelpBotChatClientConfig` never overrides `.order(...)`), which means it
-  loads history once *before* the tool-calling loop starts and, per Spring AI's documented
-  default behavior, persists only the final user question and final assistant answer for that
-  turn — not the intermediate tool-call/tool-response messages. So a question that triggers two
-  tool calls costs more tokens *for that one request* (see [Tokenomics](#tokenomics)) but only
-  adds 2 messages to memory, same as a question that needed no tools at all.
-- **20-message sliding window ≈ 10 turns.** The autoconfigured `ChatMemory` bean is
-  `MessageWindowChatMemory` with Spring AI's default max size of 20 messages (10 user + 10
-  assistant, given the point above). Once full, the oldest messages are evicted — there's no
-  summarization step like `maitch-search-agent`'s `Customer: … / Agent asked: …` compression,
-  so context just falls off a cliff at message 21 rather than degrading gracefully.
-- **In-memory, unbounded by time, not shared across instances.** Backed by Spring AI's default
-  `InMemoryChatMemoryRepository` — no JDBC/Redis chat-memory starter is on the classpath. Memory
-  is lost on restart, isn't visible to a second `helpbot-agent` instance if you scale out, and
-  never expires by age — only the 20-message window bounds it, so an idle user's history from
-  months ago is still there verbatim on their next message, right up until the window pushes it
-  out.
+- **Keyed by username**, not a client-supplied conversation ID (`CONVERSATION_ID =
+  getUserName()`). No parallel conversations per user, no "reset" affordance.
+- **Tool calls don't inflate the memory window.** `MessageChatMemoryAdvisor` runs at its
+  default position (no `.order(...)` override), so it persists only the final
+  user question + final assistant answer per turn — not intermediate tool-call/response
+  messages. A question that triggers two tool calls costs more tokens *for that request* (see
+  [Tokenomics](#tokenomics)) but only adds 2 messages to memory.
+- **20-message sliding window ≈ 10 turns** (`MessageWindowChatMemory`, Spring AI's default max
+  size). Oldest messages evicted once full — no summarization/compression like
+  `maitch-search-agent`'s `Customer: … / Agent asked: …`, so context falls off a cliff at
+  message 21 rather than degrading gracefully.
+- **In-memory, no TTL, not shared across instances.** Default `InMemoryChatMemoryRepository` —
+  no JDBC/Redis chat-memory starter on the classpath. Lost on restart, invisible to a second
+  instance if scaled out, never expires by age (only the 20-message window bounds it).
 
 ## Agentic Harness
 
-See [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md) for the full writeup. Summary: tool allow-lists
-(`ToolsUtil`) and the server-side `internal` filter (`SearchService`) are **harness-enforced** —
-code-level, testable, survive prompt edits. The system prompt (`helpbot-system.st`) and user
-template (`user-system.st`) are **model-facing instructions** — the model is expected to comply,
-but nothing else checks that it did. The doc calls out one concrete gap: the
-"wrong-information tickets are employee-only" rule exists only as prompt text, with no
-equivalent tool-level check the way `search`/`search_admin` has one.
+See [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md). Summary:
+
+- **Harness-enforced** (code-level, testable, survive prompt edits): tool allow-lists
+  (`ToolsUtil`), server-side `internal` filter (`SearchService`).
+- **Model-facing only** (compliance expected, not checked): system prompt
+  (`helpbot-system.st`), user template (`user-system.st`).
+- Known gap: the "wrong-information tickets are employee-only" rule is prompt text only — no
+  tool-level check the way `search`/`search_admin` has one.
 
 ## Tokenomics
 
-See [TOKENOMICS.md](TOKENOMICS.md) for the full writeup. Summary: nothing in this codebase
-currently caps token spend — no `max-tokens` ceiling, no rate limiting, chat memory re-sends up
-to 20 messages of context per call, every tool call is a full extra model round trip, and
-ingestion re-embeds unchanged documents on every run. The doc also covers where semantic
-caching (Spring AI 2.0's `SemanticCacheAdvisor`) would help most, and the role-partitioning and
-staleness care it needs given this app's `search`/`search_admin` split and 5-minute ingestion
-cycle.
+See [TOKENOMICS.md](TOKENOMICS.md). Summary:
+
+- Nothing caps token spend today — no `max-tokens` ceiling, no rate limiting, chat memory
+  re-sends up to 20 messages per call, every tool call is a full extra model round trip,
+  ingestion re-embeds unchanged documents on every run.
+- Doc covers where semantic caching (Spring AI 2.0's `SemanticCacheAdvisor`) would help most,
+  and the role-partitioning/staleness care it needs given the `search`/`search_admin` split and
+  5-minute ingestion cycle.
 
 ## Testing (to be added)
 
-There is currently no automated test coverage for response *quality* — only
-`@SpringBootTest` context-loads smoke tests in both modules (see `CLAUDE.md`). Nothing checks
-whether `search` results are actually relevant to a question, or whether the model's final
-answer is grounded in the retrieved chunks rather than invented.
-
-The plan is to close that gap using **Spring AI's evaluation framework**
-(`org.springframework.ai.chat.client.evaluation` — `RelevancyEvaluator` and
-`FactCheckingEvaluator`), which uses a judge LLM call to score a response against the
-question and/or the retrieved context. Shape of the intended test:
-
-1. A fixed set of golden questions per role (public-only vs. public+internal).
-2. Drive them through the real `/chat` endpoint (or the `ChatClient` beans directly).
-3. Feed `{question, retrieved context, answer}` into `RelevancyEvaluator` (does the answer
-   address the question?) and `FactCheckingEvaluator` (is the answer supported by the
-   retrieved chunks, or hallucinated?).
-4. Fail the build below a relevancy/groundedness threshold, the same way `jacocoTestCoverageVerification`
-   gates on coverage today.
-
-Not implemented yet — flagging the shape here so it isn't designed from scratch later.
+- No automated coverage for response *quality* today — only `@SpringBootTest` context-loads
+  smoke tests (see `CLAUDE.md`). Nothing checks `search` relevance or answer groundedness.
+- Planned: **Spring AI's evaluation framework**
+  (`org.springframework.ai.chat.client.evaluation` — `RelevancyEvaluator`,
+  `FactCheckingEvaluator`), judge-LLM-scored:
+  1. Fixed golden questions per role (public-only vs. public+internal).
+  2. Drive through `/chat` (or the `ChatClient` beans directly).
+  3. Score `{question, retrieved context, answer}` — relevancy (addresses the question?) and
+     groundedness (supported by retrieved chunks, or hallucinated?).
+  4. Gate the build below a threshold, same as `jacocoTestCoverageVerification` does for
+     coverage today.
+- Not implemented — shape flagged here so it isn't designed from scratch later.

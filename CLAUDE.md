@@ -50,37 +50,29 @@ Swagger UI for the agent: `http://localhost:8081/swagger-ui.html`. MCP Inspector
 
 ## Architecture
 
-### Role-based tool exposure (the core mechanism in `helpbot-agent`)
+Full walkthrough in [ARCHITECTURE.md](ARCHITECTURE.md) / [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md) / [TOKENOMICS.md](TOKENOMICS.md). Quick reference:
 
-`HelpBotService.chat()` reads the caller's role off `SecurityContextHolder` (populated by HTTP Basic auth) and dispatches to one of two `ChatClient` beans defined in `HelpBotChatClientConfig`:
+**Role-based tool exposure** (`helpbot-agent`):
+- `HelpBotService.chat()` reads role off `SecurityContextHolder`, dispatches to one of two `ChatClient` beans (`HelpBotChatClientConfig`):
+  - `helpBotChatClient` (CUSTOMER) — tools: `search`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`
+  - `helpBotInternalChatClient` (EMPLOYEE) — tools: `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`
+- Enforced by `ToolsUtil.selectToolsFor()` filtering the tool-list per client at bean-construction time (not by prompting) — `search`/`search_admin` also has a server-side filter, so it's defense in depth.
+- Both clients share `prompts/helpbot-system.st` + advisor chain (`SimpleLoggerAdvisor`, `HelpBotTokenCountAdvisor`, `MessageChatMemoryAdvisor` keyed by username). `prompts/user-system.st` injects `userName`/`question`/`role`.
+- `HelpBotService.chat()` binds `userName` on the *system* spec too (`.system(sys -> sys.param(...))`) — `defaultSystem()` only sets text, so without this the `{userName}` placeholder is sent unrendered (verified with a stub `ChatModel`; Spring AI doesn't throw on unbound placeholders here, it just leaves them literal).
 
-- `helpBotChatClient` (CUSTOMER) — tools: `search`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`
-- `helpBotInternalChatClient` (EMPLOYEE) — tools: `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`
-
-The tool sets are *not* enforced by prompting — `ToolsUtil.selectToolsFor()` filters the MCP server's advertised tools down to an explicit allow-list per client at bean-construction time, so each `ChatClient` physically cannot see tools outside its list. `search` vs `search_admin` is itself enforced server-side (see below), so the split is defense in depth, not the only guard.
-
-Both clients share the same system prompt (`prompts/helpbot-system.st`) and advisor chain: `SimpleLoggerAdvisor`, `HelpBotTokenCountAdvisor` (logs token usage per call), `MessageChatMemoryAdvisor` keyed by username (`CONVERSATION_ID` = the authenticated user). The user-turn template (`prompts/user-system.st`) injects `userName`, `question`, and `role` into every prompt. `HelpBotService.chat()` also binds `userName` on the *system* spec (`.system(sys -> sys.param("userName", ...))`) — `defaultSystem()` in `HelpBotChatClientConfig` only sets the text, so without a per-request param bind the `{userName}` placeholder in the system prompt is sent to the model unrendered (Spring AI does not throw when a template placeholder has zero bound params; it just leaves it literal — verify with a stub `ChatModel` before assuming otherwise).
-
-See [AGENTIC-HARNESS.md](AGENTIC-HARNESS.md) for the full breakdown of what's harness-enforced (tool allow-lists, server-side `internal` filter) vs. prompt-only (the ticket-type policy in `helpbot-system.st` rule 6, which has no code-level backing — see that doc for why that's a gap, not a design choice).
-
-### Ingestion pipeline (`helpbot-mcp-server`)
-
+**Ingestion pipeline** (`helpbot-mcp-server`):
 ```
 S3 bucket, prefixes public/ and internal/
   → S3IngestionJob (@Scheduled, every 5 min) or POST /api/ingest/all
-  → S3DocumentService.ingestFromS3()      lists objects per prefix, downloads via S3Template, deletes from S3 after ingest
-  → IngestionService.chunkAndIngest()     TikaDocumentReader → TokenTextSplitter (chunk-size from helpbot.ingestion.chunk-size, max 400 chunks) → VectorStore.add()
+  → S3DocumentService.ingestFromS3()      lists per prefix, downloads via S3Template, deletes from S3 after ingest
+  → IngestionService.chunkAndIngest()     TikaDocumentReader → TokenTextSplitter (helpbot.ingestion.chunk-size, max 400 chunks) → VectorStore.add()
 ```
+- Every chunk gets `internal` (bool) + `source` (filename) metadata — the only access-control signal in the system (`SearchService.searchPublic()`/`searchAll()` filter on it).
+- S3 is a transient inbox (deleted after ingest); local source of truth is `helpbot-mcp-server/localstack/documents/{public,internal}/` (re-upload needs `docker compose up -d --force-recreate localstack`).
 
-Every chunk gets `internal` (boolean) and `source` (filename) metadata. This is the only access-control signal in the system: `SearchService.searchPublic()` filters `internal=false`; `SearchService.searchAll()` (backing `search_admin`) filters `internal in (true,false)`. There's no per-document ACL beyond this flag — a document's S3 prefix (`public/` vs `internal/`) at ingest time is what sets it.
-
-S3 objects are deleted immediately after successful ingestion — the bucket is a transient inbox, not the source of truth. For local dev, the source of truth is `helpbot-mcp-server/localstack/documents/{public,internal}/`, uploaded into LocalStack by `localstack/init-s3-bucket.sh` on container start; re-upload requires `docker compose up -d --force-recreate localstack`.
-
-### MCP surface
-
-`helpbot-mcp-server` exposes 4 tools via `@McpTool` (Spring AI's MCP server support derives snake/camel case from the method unless overridden — these use explicit names): `search`, `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`. Help desk tickets are plain JPA (`HelpDeskTicket` entity, `ddl-auto: update`) — no vector search involved, unrelated to the RAG pipeline.
-
-`helpbot-agent` connects over Streamable HTTP (`spring.ai.mcp.client.streamable-http.connections.helpbot-mcp-server.url`) and discovers tools dynamically via `McpSyncClient` — `ToolsUtil` re-filters that list per chat client rather than the client being statically bound to a subset.
+**MCP surface**:
+- `helpbot-mcp-server` exposes 4 `@McpTool`s (explicit names — Spring AI otherwise derives camelCase): `search`, `search_admin`, `createHelpDeskTicket`, `getHelpDeskTicketsByUserId`. Tickets are plain JPA, unrelated to the RAG pipeline.
+- `helpbot-agent` connects over Streamable HTTP, discovers tools via `McpSyncClient`; `ToolsUtil` re-filters per chat client rather than the client being statically bound.
 
 ### Config namespaces
 
