@@ -11,17 +11,7 @@ A two-module Spring Boot RAG (Retrieval Augmented Generation) application built 
 
 ## Architecture
 
-```
-┌──────────────────────┐         MCP (Streamable HTTP)         ┌──────────────────────────┐
-│   helpbot-agent      │ ────────────────────────────────────▶  │   helpbot-mcp-server     │
-│                      │                                        │                          │
-│  REST endpoint       │                                        │  Vector search tools     │
-│  Basic Auth          │                                        │  Help desk ticket tools  │
-│  Role-based routing  │                                        │  Document ingestion      │
-│  OpenAI (gpt-4o-mini)│                                        │  OpenAI (embeddings)     │
-└──────────────────────┘                                        │  pgvector · S3           │
-                                                                └──────────────────────────┘
-```
+![Helpbot architecture diagram](helpbot-helpbot.drawio.png)
 
 **Stack:** Java 25 · Spring Boot 4.1.0 · Spring AI 2.0.0 · OpenAI · pgvector · LocalStack (S3) · Apache Tika
 
