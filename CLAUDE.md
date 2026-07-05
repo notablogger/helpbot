@@ -35,6 +35,12 @@ Run a single test class:
 ./gradlew test --tests "com.helpbot.mcp.HelpbotApplicationTests"
 ```
 
+Run the RAG quality evaluation test (judge-LLM, needs a real `OPENAI_API_KEY` — skipped without one, see ARCHITECTURE.md#testing):
+```bash
+cd helpbot-agent
+./gradlew test --tests "com.helpbot.agent.evaluation.RagQualityEvaluationTest"
+```
+
 Manually trigger ingestion (instead of waiting for the 5-min scheduled job):
 ```bash
 curl -X POST http://localhost:8080/api/ingest/all

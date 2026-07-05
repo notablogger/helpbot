@@ -72,3 +72,8 @@ See **[SWITCHING-PROVIDERS.md](SWITCHING-PROVIDERS.md)** for the full guide.
 The system/user prompts, per-role tool exposure, and chat memory that shape the agent's
 behavior — plus a documented gap where one business rule relies on prompt text alone instead
 of code-level enforcement. See **[AGENTIC-HARNESS.md](AGENTIC-HARNESS.md)**.
+
+## TODO
+
+Known gaps not implemented yet — semantic caching, role-based access for MCP tools, query
+sanitization. See **[TODO.md](TODO.md)**.
