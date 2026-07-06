@@ -65,9 +65,10 @@ Full walkthrough in [ARCHITECTURE.md](ARCHITECTURE.md) / [AGENTIC-HARNESS.md](AG
 S3 bucket, prefixes public/ and internal/
   → S3IngestionJob (@Scheduled, every 5 min) or POST /api/ingest/all
   → S3DocumentService.ingestFromS3()      lists per prefix, downloads via S3Template, deletes from S3 after ingest
-  → IngestionService.chunkAndIngest()     TikaDocumentReader → TokenTextSplitter (helpbot.ingestion.chunk-size, max 400 chunks) → VectorStore.add()
+  → IngestionService.chunkAndIngest()     TikaDocumentReader → TokenTextSplitter (helpbot.ingestion.chunk-size, max 400 chunks) → delta upsert into VectorStore
 ```
-- Every chunk gets `internal` (bool) + `source` (filename) metadata — the only access-control signal in the system (`SearchService.searchPublic()`/`searchAll()` filter on it).
+- Every chunk gets `internal` (bool) + `source` (filename) + `contentHash` metadata — `internal`/`source` are the only access-control signal in the system (`SearchService.searchPublic()`/`searchAll()` filter on `internal`).
+- Each chunk's id is a deterministic hash of `(source, chunk index, content)` (`JdkSha256HexIdGenerator`). Before embedding, `IngestionService` looks up the file's existing chunk ids (filtered `similaritySearch` on `source`) and only embeds+upserts ids not already present; existing ids no longer produced by the new split are deleted as orphans. Re-ingesting an unchanged file costs one lookup call and zero embedding calls.
 - S3 is a transient inbox (deleted after ingest); local source of truth is `helpbot-mcp-server/localstack/documents/{public,internal}/` (re-upload needs `docker compose up -d --force-recreate localstack`).
 
 **MCP surface**:
