@@ -1,6 +1,7 @@
 package com.helpbot.mcp.ingestion;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.id.IdGenerator;
@@ -36,13 +37,15 @@ public class IngestionService
 			TextSplitter textSplitter =
 					TokenTextSplitter.builder().withChunkSize(ingestionConfig.getChunkSize()).withMaxNumChunks(400).build();
 			final List<Document> split = textSplitter.split(docs);
-			final List<Document> idStamped = split.stream()
-					.map(doc -> {
+			final List<Document> idStamped = IntStream.range(0, split.size())
+					.mapToObj(i -> {
+						Document doc = split.get(i);
 						doc.getMetadata().put("internal", internal);
 						doc.getMetadata().put("source", resource.getFilename());
-						// deterministic id (source + content) lets PgVectorStore's upsert-by-id
-						// replace an unchanged chunk instead of duplicating it on re-ingestion
-						String id = idGenerator.generateId(resource.getFilename(), doc.getText());
+						// deterministic id (source + chunk index + content) lets PgVectorStore's
+						// upsert-by-id replace an unchanged chunk on re-ingestion instead of
+						// duplicating it; the index disambiguates chunks with identical text
+						String id = idGenerator.generateId(resource.getFilename(), String.valueOf(i), doc.getText());
 						return new Document(id, doc.getText(), doc.getMetadata());
 					})
 					.toList();
