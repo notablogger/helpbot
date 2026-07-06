@@ -16,8 +16,14 @@ Nothing in this codebase currently caps token spend:
 - **Each tool call is a full extra model round trip.** No step limit on the tool-calling loop
   ([ARCHITECTURE.md#loop](ARCHITECTURE.md#loop)) — search + ticket creation = 3+ model calls.
 - **No rate limiting** on `/chat` — nothing bounds request volume per caller.
-- **Ingestion re-embeds with no dedup.** 384-token chunks, up to 400/document, re-embedded on
-  every run regardless of change (see [ARCHITECTURE.md#ingestion](ARCHITECTURE.md#ingestion)).
+- **Ingestion now skips re-embedding unchanged chunks.** 384-token chunks, up to 400/document.
+  `IngestionService` assigns each chunk a deterministic id (`source` + chunk index + content hash
+  via `JdkSha256HexIdGenerator`) and, before embedding, queries the store for the file's existing
+  chunk ids (`source == filename` filter, one cheap embedding call for the lookup itself). Only
+  chunks whose id isn't already present get embedded and upserted; ids that no longer appear in
+  the new split (because content changed or the document shrank) are deleted as orphans (see
+  [ARCHITECTURE.md#ingestion](ARCHITECTURE.md#ingestion)). Net effect: re-ingesting an unchanged
+  document costs one lookup call and zero embedding calls.
 
 Net effect: the same question asked twice, worded differently, pays full price both times. For
 a support bot — where most traffic is a handful of intents rephrased ("return policy", "how do
