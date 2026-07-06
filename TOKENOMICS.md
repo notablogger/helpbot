@@ -16,8 +16,13 @@ Nothing in this codebase currently caps token spend:
 - **Each tool call is a full extra model round trip.** No step limit on the tool-calling loop
   ([ARCHITECTURE.md#loop](ARCHITECTURE.md#loop)) — search + ticket creation = 3+ model calls.
 - **No rate limiting** on `/chat` — nothing bounds request volume per caller.
-- **Ingestion re-embeds with no dedup.** 384-token chunks, up to 400/document, re-embedded on
-  every run regardless of change (see [ARCHITECTURE.md#ingestion](ARCHITECTURE.md#ingestion)).
+- **Ingestion re-embeds unchanged chunks on every run.** 384-token chunks, up to 400/document.
+  `IngestionService` now assigns each chunk a deterministic id (content + source hash via
+  `JdkSha256HexIdGenerator`), so `PgVectorStore.add()`'s upsert-by-id at least overwrites the
+  same row instead of leaving duplicate rows behind on re-ingestion — but the embedding call
+  itself still runs unconditionally, so there's no actual embedding-cost savings, and an edited
+  chunk's *old* id still orphans a stale row (see
+  [ARCHITECTURE.md#ingestion](ARCHITECTURE.md#ingestion)).
 
 Net effect: the same question asked twice, worded differently, pays full price both times. For
 a support bot — where most traffic is a handful of intents rephrased ("return policy", "how do
